@@ -1,0 +1,58 @@
+{
+  "source": "Twin_Peaks_Red_Room_v7.blend",
+  "coordinateSystem": "Three.js Y-up metres. Blender (x,y,z) -> (x,z,-y).",
+  "assets": {
+    "environment": {
+      "file": "environment.glb",
+      "bytes": 1955324,
+      "triangles": 375957,
+      "vertices": 229077,
+      "drawCalls": 15,
+      "rawBytes": 10670076
+    },
+    "milo": {
+      "file": "milo.glb",
+      "bytes": 151092,
+      "triangles": 26185,
+      "vertices": 13057,
+      "drawCalls": 1,
+      "rawBytes": 582972
+    },
+    "dream-curtains": {
+      "file": "dream-curtains.glb",
+      "bytes": 119376,
+      "triangles": 22568,
+      "vertices": 12180,
+      "drawCalls": 1,
+      "rawBytes": 526528
+    },
+    "repeated-props": {
+      "file": "repeated-props.glb",
+      "bytes": 732356,
+      "triangles": 155898,
+      "vertices": 78496,
+      "drawCalls": 1,
+      "rawBytes": 4439292
+    },
+    "double-chair": {
+      "file": "double-chair.glb",
+      "bytes": 147284,
+      "triangles": 29406,
+      "vertices": 17063,
+      "drawCalls": 1,
+      "rawBytes": 722532
+    }
+  },
+  "totalTriangles": 610014,
+  "totalBytes": 3105432,
+  "totalDrawCalls": 19,
+  "bakedSamples": 16,
+  "bakeMethod": "Native Cycles combined illumination to vertex colors; glTF unlit material",
+  "originalColorManagement": {
+    "viewTransform": "AgX",
+    "look": "AgX - Medium High Contrast",
+    "exposure": 0
+  },
+  "seconds": 3.71,
+  "compression": "EXT_meshopt_compression, 16-bit positions, 10-bit baked colors; redundant unlit normals removed"
+}

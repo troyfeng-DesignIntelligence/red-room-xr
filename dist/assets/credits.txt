@@ -1,0 +1,8 @@
+Twin Peaks Red Room WebXR reconstruction
+Original 1990–1991 series room states; connections and dimensions reconstructed.
+Venus Medici scan — Geoffrey Marchal — CC BY-NC-SA 4.0.
+https://sketchfab.com/3d-models/venus-medici-708a4166439c45d799f4eaa40d0db70e
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+Venus de Milo scan — Statens Museum for Kunst (SMK), KAS434 — CC0 / public domain.
+The Medici-derived geometry and combined environment/repeated-props assets are noncommercial share-alike derivatives.
+The original Blender files remain unchanged. Meshes simplified and native stage illumination baked for WebXR.

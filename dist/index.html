@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#170505">
+  <meta name="description" content="走进红帘之间。以《双峰》1990–1991 年原剧为依据制作的红色房间 WebXR 空间体验。">
+  <title>红色房间 · WebXR</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+</head>
+<body>
+  <main id="experience" aria-label="红色房间三维场景">
+    <div id="canvas-wrap"></div>
+    <div id="poster"></div>
+    <div class="vignette"></div>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="红色房间首页"><span class="brand-mark">↯</span><span>THE RED ROOM</span></a>
+      <div class="top-actions"><span class="edition">1990—1991 / 空间习作</span><button id="help-button" class="quiet" aria-label="查看操作说明">?</button></div>
+    </header>
+    <section id="welcome" class="welcome" aria-labelledby="title">
+      <div class="intro">
+        <p class="eyebrow"><span></span> AN IMMERSIVE RECONSTRUCTION</p>
+        <h1 id="title">红色房间<span>帘幕之后，<br>仍是帘幕。</span></h1>
+        <p class="description">从熟悉的等候室，走向反复出现的房间。<br>沿着走廊回来，有些东西已经改变。</p>
+        <div class="entry-actions">
+          <button id="enter-desktop" class="primary" disabled>正在准备场景<span>↗</span></button>
+          <button id="enter-vr" class="secondary" disabled>检测 VR 设备</button>
+        </div>
+        <p id="xr-status" class="device-note" role="status">正在检查此浏览器的沉浸式体验支持。</p>
+        <div class="load-track" aria-hidden="true"><span id="load-bar"></span></div>
+        <p id="load-status" class="load-status" role="status">正在载入房间…</p>
+      </div>
+      <div class="room-caption"><span>01 / THE WAITING ROOM</span><i></i><p>红丝绒 · 象牙白 · 无尽的回返</p></div>
+    </section>
+    <section id="hud" class="hud" hidden aria-label="漫游控制">
+      <div class="place"><span id="room-code">01</span><div><strong id="room-name">等候室</strong><small id="lap-label">第一圈 · 熟悉的房间</small></div></div>
+      <div id="hint" class="hint">W A S D 移动 · 拖动画面转头 · Esc 菜单</div>
+      <div class="hud-actions"><button id="route-button" class="quiet">路线提示</button><button id="reset-button" class="quiet">回到起点</button><button id="menu-button" class="quiet" aria-label="打开菜单">☰</button></div>
+    </section>
+    <div id="touch-controls" hidden aria-label="触屏移动"><button data-move="forward" aria-label="前进">↑</button><div><button data-move="left" aria-label="向左">←</button><button data-move="back" aria-label="后退">↓</button><button data-move="right" aria-label="向右">→</button></div></div>
+    <div id="toast" role="status"></div>
+    <div id="error" hidden role="alert"><h2>场景暂时无法打开</h2><p id="error-message"></p><button onclick="location.reload()" class="primary">重新加载</button></div>
+    <footer id="footer"><span>WEBXR · 可步入的梦境</span><button id="credits-button" class="text-button">作品与来源</button></footer>
+  </main>
+  <dialog id="help-dialog">
+    <button class="close" data-close aria-label="关闭">×</button><p class="eyebrow">HOW TO EXPLORE</p><h2>在红帘之间行走</h2>
+    <dl><dt>电脑</dt><dd>WASD 或方向键移动；按住鼠标拖动视线。Esc 打开菜单。打开“路线提示”可看到下一个路标。</dd><dt>手机 / 平板</dt><dd>左下方方向键移动，拖动其他区域转头。</dd><dt>VR 头显</dt><dd>按住手柄扳机瞄准，落点变亮后松开传送。左右拨动摇杆，每次转向 30°。通过头显系统菜单退出 VR。</dd></dl>
+    <p>沿完整路线走回等候室后，远处的房间会改变。路线提示可随时关闭；没有倒计时，也不会自动推动视角。</p>
+    <p class="muted">请使用支持 WebXR 的头显浏览器打开本站。当前版本围绕 VR 手柄设计；没有手柄的设备暂不提供完整移动操作。</p>
+    <button class="primary compact" data-close>开始探索</button>
+  </dialog>
+  <dialog id="credits-dialog">
+    <button class="close" data-close aria-label="关闭">×</button><p class="eyebrow">ABOUT THIS SPACE</p><h2>一个可以走进去的复原习作</h2>
+    <p>以《双峰》1990–1991 年原剧中的红色房间为视觉依据，由 Blender v7 场景转换为实时三维版本。房间之间的连接、完整尺寸与循环变化时序属于推定和创作。</p>
+    <p>米洛维纳斯：SMK，CC0。美第奇维纳斯：Geoffrey Marchal，CC BY-NC-SA 4.0；为实时显示进行了减面与材质调整。该雕像及其衍生版本须遵守非商业、署名及相同方式共享要求。</p>
+    <p><a href="./assets/credits.txt" target="_blank" rel="noopener">查看资产来源与许可 ↗</a><br><a href="https://twinpeaksgazette.com/2017/07/22/iconography-of-the-red-room/" target="_blank" rel="noopener">场景参考：Iconography of the Red Room ↗</a></p>
+    <p class="muted">非官方同人空间习作。实时版采用简化网格与预计算光照，呈现效果与离线电影渲染有所不同。WebXR 输入已进行软件检查，尚未完成实体头显实测。</p>
+  </dialog>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

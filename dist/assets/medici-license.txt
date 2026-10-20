@@ -1,0 +1,53 @@
+VENUS MEDICI — SCANNED ASSET ATTRIBUTION
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+License URL: https://creativecommons.org/licenses/by-nc-sa/4.0/
+Legal code: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+This asset is NOT CC0 and is NOT licensed for commercial use under this license.
+Preserve attribution, link to the license, identify modifications, and distribute modified versions under the same license.
+
+Attribution:
+"Venus Medici" by Geoffrey Marchal
+Author: https://sketchfab.com/geoffreymarchal
+Original scan: https://sketchfab.com/3d-models/venus-medici-708a4166439c45d799f4eaa40d0db70e
+Short source link: https://skfb.ly/SMr9
+Physical cast: The Royal Cast Collection, Copenhagen, Denmark
+Original artwork: Medici Venus, Uffizi Galleries, inventory 1914 no. 224
+Museum record: https://www.uffizi.it/en/artworks/medici-venus
+
+Obtained through a public GitHub repository via the authorized GitHub connector:
+Repository: https://github.com/NzaQr/black-lodge
+Commit: 2a5eedd9c019233006493a112199b4ad562cbc4c
+File: public/models/venus-medici.glb
+Immutable mirror: https://github.com/NzaQr/black-lodge/blob/2a5eedd9c019233006493a112199b4ad562cbc4c/public/models/venus-medici.glb
+Git blob SHA: 66ef889c921004de252be54c994217468e74668a
+The repository README and GLB asset.extras both explicitly retain Geoffrey Marchal's source and CC BY-NC-SA 4.0.
+Original upstream scan contains approximately 375,700 triangles.
+The GitHub derivative was simplified to 29,997 triangles, centered/resized, textures removed, and meshopt compressed.
+This workspace copy was losslessly meshopt decoded for Blender compatibility; source attribution and licensing extras retained.
+Decoded file: venus_medici_ncsa_decoded.glb
+Decoded size: 364920 bytes
+No artistic remodeling was performed in this workspace.
+
+Verified 2026-10-18:
+- Primary Sketchfab indexed record describes the Royal Cast Collection / Uffizi inv.224 scan and CC Attribution-NonCommercial-ShareAlike.
+- Uffizi official record confirms the Medici Venus artwork, pudica pose, height153cm and inventory224.
+- Blender 4.5.9 import and four view render confirm complete arms and dolphin support.
+- Actual Blender coordinates after applying imported transforms: Z up, front toward -Y; no extra rotation needed.
+- Mesh: 15288 vertices, 29997 triangles.
+- Bounds min: (-0.4195733070, -0.3803622723, 0.00004816055)
+- Bounds max: (0.4193555117, 0.3804898262, 2.5999896526)
+- Height: 2.5999414921
+- Normalize: subtract X/Y bounding-box center and minimumZ, then multiply coordinates by desiredHeight / 2.5999414921.
+- Front render: venus_medici_four_views.png, leftmost view is default orientation. Following views rotate +90, +180, +270 degrees around Blender Z.
+
+Repository README as obtained:
+# The Black Lodge
+
+An interactive isometric 3D miniature of the Black Lodge from Twin Peaks.
+
+Built with Next.js, React, TypeScript, Three.js, React Three Fiber, Drei, and Tailwind CSS.
+
+"Venus Medici" ([https://skfb.ly/SMr9](https://skfb.ly/SMr9)) by Geoffrey Marchal is licensed under CC Attribution-NonCommercial-ShareAlike ([http://creativecommons.org/licenses/by-nc-sa/4.0/](http://creativecommons.org/licenses/by-nc-sa/4.0/)).
+
+The model was simplified, resized, and compressed, and its textures were removed. This modified model is distributed under the same CC BY-NC-SA 4.0 license.

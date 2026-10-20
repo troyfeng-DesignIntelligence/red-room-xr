@@ -1,0 +1,58 @@
+VENUS DE MILO — SCANNED ASSET SOURCE AND RIGHTS
+Author / digitization: SMK – National Gallery of Denmark (Statens Museum for Kunst)
+Physical cast: The Royal Cast Collection, Copenhagen, Denmark
+Cast inventory: KAS434/1
+Title: Venus de Milo (Aphrodite of Milos)
+Rights: CC0 1.0 Universal / Public Domain
+CC0 dedication: https://creativecommons.org/publicdomain/zero/1.0/
+The Atrium source catalog labels this work Public Domain Mark 1.0:
+https://creativecommons.org/publicdomain/mark/1.0/
+The museum's original scan is explicitly labeled CC0 Public Domain on the official SMK Sketchfab account.
+Commercial reuse is allowed. Attribution is provided for provenance.
+
+Primary scan record and CC0 statement:
+https://sketchfab.com/3d-models/venus-de-milo-aphrodite-of-milos-53082b5d6cef4c34a9701a2a24f58075
+Official museum record:
+https://open.smk.dk/artwork/image/KAS434
+Official museum Digital Casts collection, states models can be downloaded, repurposed, remixed and printed by anyone:
+https://sketchfab.com/smkmuseum/collections/smk2-presents-digital-casts-be9b5276fb1049f180a25d706c8f3949
+Museum account of its public-domain 3D scan policy:
+https://blog.smk.dk/scanning-smk-one-sculpture-at-a-time
+
+Additional corroboration:
+Wikimedia copy of the museum STL has the same KAS434 identifier and CC0:
+https://commons.wikimedia.org/wiki/File:Venus_(Afrodite)_fra_Milo_-_KAS434_1.stl
+IIIF fixture metadata identifies a separate optimized SMK Venus model as CC0:
+https://fixtures.iiif.io/info.html?file=/3d/smk/venus.glb
+(IIIF model was used for rights corroboration, not as the acquired binary.)
+
+Actual acquired binary:
+Repository: https://github.com/never-nude/atrium.earth
+Commit: 25d2a47ad16af017c1eb19ab6aab2ac13e0d88da
+Path: public/models/previews/venus-de-milo/preview.glb
+Git blob SHA: d40f27ce5a14c857221893ec097ef98a7e7bda05
+Immutable link:
+https://github.com/never-nude/atrium.earth/blob/25d2a47ad16af017c1eb19ab6aab2ac13e0d88da/public/models/previews/venus-de-milo/preview.glb
+The same commit's src/data/catalog.json identifies the source as SMK Open, accession KAS434, public domain.
+Exact source catalog entry saved beside this file as venus_milo_source_catalog.json.
+
+Processing:
+The Atrium derivative was simplified from the museum scan and meshopt compressed.
+This workspace copy was losslessly meshopt decoded to an ordinary Blender-compatible GLB.
+No geometry was sculpted or altered in this workspace.
+venus_milo_source.glb: 481948 bytes
+venus_milo_decoded.glb: 2400712 bytes
+Decoded SHA256: 883D68238B30377359D709F032586CCEC9BE6B517151C58BC9DF425381FBEF27
+Mesh: 74957 vertices, 149991 triangles.
+
+Verification on 2026-10-19:
+Imported and rendered successfully in Blender 4.5.9 LTS.
+Visual check confirms the actual armless Venus de Milo with cloth around her lower body.
+Four-view render: venus_milo_four_views.png
+Default Blender import, after applying imported transforms: Z up, front toward -Y.
+No additional rotation is needed.
+Bounds min: (0.012609481811523438, 0.0021953582763671875, 0.00998687744140625)
+Bounds max: (42.927391052246094, 39.17179870605469, 130.00802612304688)
+Height: 129.99803924560547
+XY center: (21.47000026702881, 19.586997032165527)
+Normalize by subtracting XY center and minimum Z, then scaling by desiredHeight / 129.99803924560547.
