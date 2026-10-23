@@ -15,9 +15,10 @@
     <div id="canvas-wrap"></div>
     <div id="poster"></div>
     <div class="vignette"></div>
+    <div id="fade" aria-hidden="true"></div>
     <header class="topbar">
       <a class="brand" href="./" aria-label="红色房间首页"><span class="brand-mark">↯</span><span>THE RED ROOM</span></a>
-      <div class="top-actions"><span class="edition">1990—1991 / 空间习作</span><button id="help-button" class="quiet" aria-label="查看操作说明">?</button></div>
+      <div class="top-actions"><span class="edition">LOCAL EDITION / 1990—1991</span><button id="sound-button" class="quiet" aria-pressed="true" aria-label="声音开关">声音</button><button id="look-button" class="quiet" aria-haspopup="dialog" aria-controls="look-dialog">画面</button><button id="help-button" class="quiet" aria-label="查看操作说明">?</button></div>
     </header>
     <section id="welcome" class="welcome" aria-labelledby="title">
       <div class="intro">
@@ -28,6 +29,7 @@
           <button id="enter-desktop" class="primary" disabled>正在准备场景<span>↗</span></button>
           <button id="enter-vr" class="secondary" disabled>检测 VR 设备</button>
         </div>
+        <p class="device-note listen-note">建议戴上耳机。声音会先于画面出现。</p>
         <p id="xr-status" class="device-note" role="status">正在检查此浏览器的沉浸式体验支持。</p>
         <div class="load-track" aria-hidden="true"><span id="load-bar"></span></div>
         <p id="load-status" class="load-status" role="status">正在载入房间…</p>
@@ -36,20 +38,42 @@
     </section>
     <section id="hud" class="hud" hidden aria-label="漫游控制">
       <div class="place"><span id="room-code">01</span><div><strong id="room-name">等候室</strong><small id="lap-label">第一圈 · 熟悉的房间</small></div></div>
-      <div id="hint" class="hint">W A S D 移动 · 拖动画面转头 · Esc 菜单</div>
-      <div class="hud-actions"><button id="route-button" class="quiet">路线提示</button><button id="reset-button" class="quiet">回到起点</button><button id="menu-button" class="quiet" aria-label="打开菜单">☰</button></div>
+      <div id="hint" class="hint">W A S D 行走 · 移动鼠标环顾 · Esc 释放鼠标</div>
+      <div class="hud-actions"><button id="reset-button" class="quiet">回到起点</button><button id="menu-button" class="quiet" aria-label="打开菜单">☰</button></div>
     </section>
     <div id="touch-controls" hidden aria-label="触屏移动"><button data-move="forward" aria-label="前进">↑</button><div><button data-move="left" aria-label="向左">←</button><button data-move="back" aria-label="后退">↓</button><button data-move="right" aria-label="向右">→</button></div></div>
     <div id="toast" role="status"></div>
     <div id="error" hidden role="alert"><h2>场景暂时无法打开</h2><p id="error-message"></p><button onclick="location.reload()" class="primary">重新加载</button></div>
-    <footer id="footer"><span>WEBXR · 可步入的梦境</span><button id="credits-button" class="text-button">作品与来源</button></footer>
+    <footer id="footer"><span>LOCALHOST · 可步入的梦境</span><button id="credits-button" class="text-button">作品与来源</button></footer>
   </main>
   <dialog id="help-dialog">
     <button class="close" data-close aria-label="关闭">×</button><p class="eyebrow">HOW TO EXPLORE</p><h2>在红帘之间行走</h2>
-    <dl><dt>电脑</dt><dd>WASD 或方向键移动；按住鼠标拖动视线。Esc 打开菜单。打开“路线提示”可看到下一个路标。</dd><dt>手机 / 平板</dt><dd>左下方方向键移动，拖动其他区域转头。</dd><dt>VR 头显</dt><dd>按住手柄扳机瞄准，落点变亮后松开传送。左右拨动摇杆，每次转向 30°。通过头显系统菜单退出 VR。</dd></dl>
-    <p>沿完整路线走回等候室后，远处的房间会改变。路线提示可随时关闭；没有倒计时，也不会自动推动视角。</p>
-    <p class="muted">请使用支持 WebXR 的头显浏览器打开本站。当前版本围绕 VR 手柄设计；没有手柄的设备暂不提供完整移动操作。</p>
+    <dl><dt>电脑</dt><dd>WASD 或方向键行走。进入后鼠标会被锁定用于环顾；按 Esc 先释放鼠标，再按一次回到菜单。单击画面重新锁定，也可以按住拖动转头。V 对比画面效果。</dd><dt>手机 / 平板</dt><dd>左下方方向键移动，拖动其他区域转头。</dd><dt>VR 头显</dt><dd>按住扳机瞄准，落点变亮后松开传送；摇杆每次转向 30°。A / X 开关路线，双手同时按住握键 1.2 秒回到起点。通过头显系统菜单退出 VR。</dd></dl>
+    <p>贴近红帘行走，或轻轻靠向帘幕，布料会在接触处摆动，再缓缓回落。VR 中也可以用手柄轻触帘幕。</p>
+    <p>这里没有目标，也没有倒计时。慢慢走，留意声音。</p>
+    <div class="options" role="group" aria-label="漫游选项">
+      <label class="option"><input type="checkbox" id="route-toggle"><span><strong>路线微光</strong><small>在地面显示前进方向，也可按 G 开关</small></span></label>
+      <label class="option"><input type="checkbox" id="bob-toggle"><span><strong>步行起伏</strong><small>行走时视线随脚步轻微起伏</small></span></label>
+    </div>
+    <p class="muted">本机已连接的 VR 设备可使用 localhost。独立头显需要先通过 USB 端口转发连接此本地服务，步骤见项目使用说明。当前交互围绕 VR 手柄设计。</p>
     <button class="primary compact" data-close>开始探索</button>
+  </dialog>
+  <dialog id="look-dialog" aria-labelledby="look-title" aria-describedby="look-shortcut">
+    <button class="close" data-close aria-label="关闭">×</button>
+    <p class="eyebrow">LIGHT &amp; TEXTURE</p><h2 id="look-title">画面的质感</h2>
+    <div class="look-options" role="group" aria-label="选择画面风格">
+      <button type="button" data-look="clean" aria-pressed="false"><strong>原始</strong><span>清晰原画</span></button>
+      <button type="button" data-look="film" aria-pressed="true"><strong>胶片</strong><span>柔光、细颗粒与暖色</span></button>
+      <button type="button" data-look="dream" aria-pressed="false"><strong>梦境</strong><span>更浓的朦胧光晕</span></button>
+    </div>
+    <div class="look-strength">
+      <div class="look-strength-label"><label for="look-strength">效果强度</label><output id="look-value" for="look-strength">65%</output></div>
+      <input id="look-strength" type="range" min="0" max="100" step="1" value="65" aria-label="画面效果强度" aria-describedby="look-range-hint">
+      <div id="look-range-hint" class="look-range-hint" aria-hidden="true"><span>轻柔</span><span>浓郁</span></div>
+    </div>
+    <p id="look-shortcut" class="look-shortcut"><kbd>V</kbd> 开关效果，可随时对比。</p>
+    <p class="muted">VR 使用轻量色调，保留清晰的空间感。</p>
+    <button class="primary compact" data-close>回到房间</button>
   </dialog>
   <dialog id="credits-dialog">
     <button class="close" data-close aria-label="关闭">×</button><p class="eyebrow">ABOUT THIS SPACE</p><h2>一个可以走进去的复原习作</h2>

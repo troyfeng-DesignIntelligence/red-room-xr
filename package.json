@@ -6,8 +6,10 @@
     "test": "node --test tests/*.test.mjs",
     "preview": "node server.mjs",
     "vendor": "node scripts/vendor.mjs",
-    "check": "node --check dist/js/main.js && node --check dist/js/simulation.js && node --check dist/js/xr-controls.js",
-    "qa": "node tests/browser-qa.mjs"
+    "check": "node --check dist/js/main.js && node --check dist/js/simulation.js && node --check dist/js/xr-controls.js && node --check dist/js/presentation.js && node --check dist/js/film.js && node --check dist/js/curtains.js && node --check dist/js/curtain-surfaces.js && node --check dist/js/curtain-motion.js && node --check dist/js/locomotion.js && node --check dist/js/audio.js && node --check server.mjs",
+    "qa": "node tests/browser-qa.mjs",
+    "qa:curtains": "node tests/curtain-browser-qa.mjs",
+    "qa:film": "node tests/film-browser-qa.mjs"
   },
   "keywords": [],
   "author": "",

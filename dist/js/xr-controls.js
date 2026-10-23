@@ -5,6 +5,7 @@ import * as THREE from 'three';
 export function createXRControls({
   renderer, scene, rig, camera, simulation,
   onComfortFade = () => {}, onTeleport = () => {},
+  onToggleGuide = () => {}, onResetRequested = () => {}, onResetProgress = () => {},
 }) {
   const floorY = simulation.floorY;
   const up = new THREE.Vector3(0, 1, 0);
@@ -16,9 +17,35 @@ export function createXRControls({
   const parentLocal = new THREE.Vector3();
   const rotation = new THREE.Quaternion();
   const controllers = [];
+  const interactionSources=[];
+  const contactPoints=Array.from({length:3},(_,index)=>({id:index===0?'body':`hand-${index}`,x:0,y:0,z:0,radius:index===0?.68:.32}));
+  const contactPosition=new THREE.Vector3();
   const materials = [];
   const geometries = [];
   let blink = 0, comfortFade = 0, lastFade = -1;
+  let turnCooldown = 0, resetHeld = 0, resetLatched = false, lastResetProgress = 0;
+  const resetHoldSeconds = 1.2;
+
+  function buttonPressed(entry, index) {
+    const button = entry.source?.gamepad?.buttons?.[index];
+    return !!button && (button.pressed || button.value >= 0.8);
+  }
+  function horizontalAxis(entry) {
+    const axes = entry.source?.gamepad?.axes;
+    // xr-standard reserves axes 0/1 for touchpad, 2/3 for thumbstick.
+    return axes ? (axes.length >= 4 ? axes[2] : axes[0] ?? 0) : 0;
+  }
+  function reportResetProgress(value) {
+    if (value !== lastResetProgress) {
+      lastResetProgress = value;
+      onResetProgress(value);
+    }
+  }
+  function cancelResetGesture() {
+    resetHeld = 0;
+    resetLatched = false;
+    reportResetProgress(0);
+  }
 
   function ownGeometry(geometry) { geometries.push(geometry); return geometry; }
   function ownMaterial(material) { materials.push(material); return material; }
@@ -86,12 +113,14 @@ export function createXRControls({
     );
     body.rotation.x = Math.PI / 5;
     body.position.set(0, -0.02, 0.035);
+    body.visible = false;
     grip.add(body);
     const ring = new THREE.Mesh(
       ownGeometry(new THREE.TorusGeometry(0.034, 0.003, 4, 18)),
       ownMaterial(new THREE.MeshBasicMaterial({ color: 0xe0c49b })),
     );
     ring.position.set(0, 0.008, -0.025);
+    ring.visible = false;
     grip.add(ring);
 
     const positions = new Float32Array(3 * 85);
@@ -112,16 +141,24 @@ export function createXRControls({
     marker.visible = false;
     scene.add(line, marker);
     const entry = { controller, grip, body, ring, geometry, positions, material, line, marker,
-      aiming: false, source: null, target: null, turnArmed: true, cooldown: 0 };
+      aiming: false, source: null, target: null, turnArmed: true, guidePressed: false };
     entry.onStart = () => { if (renderer.xr.isPresenting) entry.aiming = true; };
     entry.onEnd = () => release(entry);
     entry.onConnected = event => {
       entry.source = event.data;
-      body.visible = ring.visible = !event.data.hand && event.data.targetRayMode === 'tracked-pointer';
+      entry.turnArmed = Math.abs(horizontalAxis(entry)) < 0.25;
+      // Connecting a controller while its face button is held is not a click.
+      entry.guidePressed = buttonPressed(entry, 4);
+      body.visible = ring.visible = renderer.xr.isPresenting && !event.data.hand && event.data.targetRayMode === 'tracked-pointer';
+      cancelResetGesture();
     };
     entry.onDisconnected = () => {
       entry.source = null;
       entry.aiming = false;
+      entry.turnArmed = true;
+      entry.guidePressed = false;
+      body.visible = ring.visible = false;
+      cancelResetGesture();
       hideAim(entry);
     };
     controller.addEventListener('selectstart', entry.onStart);
@@ -189,11 +226,14 @@ export function createXRControls({
   }
 
   function reset() {
-    blink = 0; comfortFade = 0;
+    blink = 0; comfortFade = 0; turnCooldown = 0;
+    cancelResetGesture();
     for (const entry of controllers) {
       entry.aiming = false;
-      entry.turnArmed = true;
-      entry.cooldown = 0;
+      entry.turnArmed = Math.abs(horizontalAxis(entry)) < 0.25;
+      entry.guidePressed = buttonPressed(entry, 4);
+      entry.body.visible = entry.ring.visible = renderer.xr.isPresenting && !!entry.source &&
+        !entry.source.hand && entry.source.targetRayMode === 'tracked-pointer';
       hideAim(entry);
     }
     lastFade = 0;
@@ -202,20 +242,57 @@ export function createXRControls({
   renderer.xr.addEventListener('sessionend', reset);
 
   function update(dt) {
-    if (!renderer.xr.isPresenting) return;
+    if (!renderer.xr.isPresenting) {
+      for (const entry of controllers) {
+        entry.body.visible = entry.ring.visible = false;
+        hideAim(entry);
+      }
+      return;
+    }
     const delta = Math.min(0.1, Math.max(0, dt));
     blink = Math.max(0, blink - delta);
+    turnCooldown = Math.max(0, turnCooldown - delta);
+    let turnDirection = 0, toggleGuide = false;
     for (const entry of controllers) {
-      entry.cooldown = Math.max(0, entry.cooldown - delta);
-      const axes = entry.source?.gamepad?.axes;
-      // xr-standard reserves axes 0/1 for touchpad, 2/3 for thumbstick.
-      const horizontal = axes ? (axes.length >= 4 ? axes[2] : axes[0] ?? 0) : 0;
+      entry.body.visible = entry.ring.visible = !!entry.source &&
+        !entry.source.hand && entry.source.targetRayMode === 'tracked-pointer';
+      const horizontal = horizontalAxis(entry);
       if (Math.abs(horizontal) < 0.25) entry.turnArmed = true;
-      if (Math.abs(horizontal) > 0.7 && entry.turnArmed && entry.cooldown === 0) {
-        snapTurn(-Math.sign(horizontal) * Math.PI / 6);
+      if (Math.abs(horizontal) > 0.7 && entry.turnArmed) {
+        // Consume both sticks together. Holding the second stick must not cause
+        // another turn as soon as the shared cooldown expires.
+        if (turnCooldown === 0 && turnDirection === 0) turnDirection = Math.sign(horizontal);
         entry.turnArmed = false;
-        entry.cooldown = 0.32;
       }
+      // xr-standard button 4 is A (right) / X (left). Merge simultaneous clicks.
+      const guidePressed = buttonPressed(entry, 4);
+      if (guidePressed && !entry.guidePressed) toggleGuide = true;
+      entry.guidePressed = guidePressed;
+    }
+    if (turnDirection) {
+      snapTurn(-turnDirection * Math.PI / 6);
+      turnCooldown = 0.32;
+    }
+    if (toggleGuide) onToggleGuide();
+
+    // The two squeeze buttons make resetting deliberate and reachable without
+    // a DOM overlay. A short squeeze or a disconnected controller cancels it.
+    const bothGrips = controllers.every(entry => buttonPressed(entry, 1));
+    if (bothGrips && !resetLatched) {
+      resetHeld = Math.min(resetHoldSeconds, resetHeld + delta);
+      reportResetProgress(resetHeld / resetHoldSeconds);
+      if (resetHeld >= resetHoldSeconds - 1e-8) {
+        resetLatched = true;
+        for (const entry of controllers) { entry.aiming = false; hideAim(entry); }
+        onResetRequested();
+        // An application reset may call controls.reset() synchronously.
+        // Keep this physical button hold consumed until one grip is released.
+        resetLatched = true;
+        resetHeld = resetHoldSeconds;
+      }
+    } else if (!bothGrips) cancelResetGesture();
+
+    for (const entry of controllers) {
       if (entry.aiming) updateAim(entry);
       else hideAim(entry);
     }
@@ -247,5 +324,21 @@ export function createXRControls({
     for (const material of materials) material.dispose();
   }
 
-  return { update, dispose, reset };
+  function getInteractionSources(){
+    interactionSources.length=0;
+    if(!renderer.xr.isPresenting)return interactionSources;
+    const position=getHead();
+    Object.assign(contactPoints[0],{x:position.x,y:Math.max(.6,position.y-.45),z:position.z});
+    interactionSources.push(contactPoints[0]);
+    for(let index=0;index<controllers.length;index++){
+      const entry=controllers[index];
+      if(!entry.source?.gripSpace||!entry.grip.visible||entry.source.hand)continue;
+      entry.grip.getWorldPosition(contactPosition);
+      Object.assign(contactPoints[index+1],{x:contactPosition.x,y:contactPosition.y,z:contactPosition.z});
+      interactionSources.push(contactPoints[index+1]);
+    }
+    return interactionSources;
+  }
+
+  return { update, dispose, reset, getInteractionSources };
 }
