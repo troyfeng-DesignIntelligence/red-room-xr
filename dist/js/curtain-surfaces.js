@@ -40,6 +40,57 @@ export function smoothCurtainPath(points) {
   return Array.from({length:count+1},(_,i)=>pointAt(smoothed,smoothLengths,total*i/count).slice());
 }
 
+// How sharply the hanging line turns around each path sample (0 straight, 1 a
+// corner), spread about 0.4 m either side so the whole corner is covered.
+export function cornerWeights(path) {
+  const turn=path.map((point,i)=>{
+    if(i<3||i>path.length-4)return 0;
+    const a=Math.atan2(point[1]-path[i-3][1],point[0]-path[i-3][0]),b=Math.atan2(path[i+3][1]-point[1],path[i+3][0]-point[0]);
+    const degrees=Math.abs((((b-a)*180/Math.PI)+540)%360-180);
+    return smoothstep((degrees-20)/45);
+  });
+  return turn.map((_,i)=>{
+    let weight=0;
+    for(let j=Math.max(0,i-4);j<=Math.min(turn.length-1,i+4);j++)weight=Math.max(weight,turn[j]*(1-Math.abs(j-i)/5));
+    return weight;
+  });
+}
+
+// Each row of a panel separated into its pleats and the slow sway they hang
+// on: the pleat is what is left after a Hann-weighted average over about two
+// pleats. Slopes are along the hanging line, in metres per metre. Some rows of
+// the exported cloth alternate between two heights a few millimetres apart;
+// heights within 2.5 cm are read as one row.
+export function pleatRows(samples,window=.17) {
+  const label=new Map();
+  let row=0,last=-Infinity;
+  for(const height of [...new Set(samples.map(sample=>Math.round(sample.y*1000)))].sort((a,b)=>a-b)){
+    if(height-last>25)row++;
+    label.set(height,row);last=height;
+  }
+  const rows=new Map();
+  for(const sample of samples){
+    const key=label.get(Math.round(sample.y*1000));
+    if(!rows.has(key))rows.set(key,[]);
+    rows.get(key).push(sample);
+  }
+  for(const list of rows.values()){
+    list.sort((a,b)=>a.arc-b.arc);
+    for(let i=0;i<list.length;i++){
+      let sum=0,weight=0;
+      for(let j=i;j>=0&&list[i].arc-list[j].arc<=window;j--){const w=.5+.5*Math.cos(Math.PI*(list[i].arc-list[j].arc)/window);sum+=list[j].offset*w;weight+=w;}
+      for(let j=i+1;j<list.length&&list[j].arc-list[i].arc<=window;j++){const w=.5+.5*Math.cos(Math.PI*(list[j].arc-list[i].arc)/window);sum+=list[j].offset*w;weight+=w;}
+      list[i].pleat=list.length<8?0:list[i].offset-sum/weight;
+    }
+    for(let i=0;i<list.length;i++){
+      const a=list[Math.max(0,i-1)],b=list[Math.min(list.length-1,i+1)],span=b.arc-a.arc;
+      list[i].pleatSlope=span>.005?Math.max(-6,Math.min(6,(b.pleat-a.pleat)/span)):0;
+      list[i].offsetSlope=span>.005?Math.max(-6,Math.min(6,(b.offset-a.offset)/span)):0;
+    }
+  }
+  return samples;
+}
+
 function nearestArc(point,path,lengths) {
   let best=Infinity,arc=0;
   for(let i=1;i<path.length;i++){
@@ -121,9 +172,10 @@ export function prepareCurtainSurfaces(models) {
     root.traverse(mesh=>{
       if(!mesh.isMesh||seen.has(mesh)||!/(?:^|[ _])drape(?:[ _]|$)/i.test(mesh.name))return;
       seen.add(mesh);meshes.push(mesh);
-      const {world,groups}=readPanels(mesh),attributes=new Float32Array(mesh.geometry.getAttribute('position').count*4);
+      const {world,groups}=readPanels(mesh),count=mesh.geometry.getAttribute('position').count;
+      const attributes=new Float32Array(count*4),folds=new Float32Array(count*2),shapes=new Float32Array(count*4),heights=new Float32Array(count);
       for(const group of groups){
-        const {path,minY,maxY}=group,lengths=arcLengths(path),total=lengths.at(-1);
+        const {path,minY,maxY}=group,lengths=arcLengths(path),total=lengths.at(-1),corners=cornerWeights(path),samples=[];
         // The normal and dream room F have identical geometry. Sharing their
         // ID keeps an ongoing contact response continuous across a state swap.
         const identity=path.map(p=>p.map(v=>v.toFixed(4)).join(',')).join(';')+`|${minY.toFixed(4)},${maxY.toFixed(4)}`;
@@ -137,12 +189,26 @@ export function prepareCurtainSurfaces(models) {
           const heightFraction=clamp01((y-minY)/(maxY-minY||1));
           const weight=group.pinned.has(i)?0:Math.pow(1-heightFraction,1.35)*smoothstep((y-minY)/.16)*smoothstep(Math.min(arc,total-arc)/.22);
           attributes.set([-dz/length,dx/length,weight,id],i*4);
+          // Signed distance from the smoothed centreline along its normal:
+          // positive on the normal's side. With the arc it lets the shader
+          // tell crests from troughs and place pools of light along the panel.
+          const centre=pointAt(path,lengths,arc);
+          const offset=(world[i*3]-centre[0])*(-dz/length)+(world[i*3+2]-centre[1])*(dx/length);
+          folds.set([offset,arc],i*2);
+          heights[i]=heightFraction;
+          samples.push({index:i,arc,y,offset,corner:corners[Math.min(corners.length-1,Math.round(arc/(total||1)*(corners.length-1)))]});
         }
+        // Pleats, their slopes and the corners, for reshaping the cloth in the shader.
+        for(const sample of pleatRows(samples))shapes.set([sample.pleat,sample.pleatSlope,sample.offsetSlope,sample.corner],sample.index*4);
       }
       mesh.geometry.setAttribute('curtainSurface',new THREE.Float32BufferAttribute(attributes,4));
+      mesh.geometry.setAttribute('curtainFold',new THREE.Float32BufferAttribute(folds,2));
+      mesh.geometry.setAttribute('curtainShape',new THREE.Float32BufferAttribute(shapes,4));
+      mesh.geometry.setAttribute('curtainHeight',new THREE.Float32BufferAttribute(heights,1));
       mesh.geometry.computeBoundingSphere();
       const scale=new THREE.Vector3().setFromMatrixScale(mesh.matrixWorld);
-      mesh.geometry.boundingSphere.radius+=.2/Math.max(1e-8,Math.min(Math.abs(scale.x),Math.abs(scale.y),Math.abs(scale.z)));
+      // Room for deeper pleats, rounded corners and the cloth's movement.
+      mesh.geometry.boundingSphere.radius+=.45/Math.max(1e-8,Math.min(Math.abs(scale.x),Math.abs(scale.y),Math.abs(scale.z)));
     });
   }
   return {panels,meshes};

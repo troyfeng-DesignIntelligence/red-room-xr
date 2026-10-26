@@ -28,6 +28,27 @@ test('immersive rendering bypasses every offscreen pass and keeps the native XR 
   film.dispose();mesh.geometry.dispose();material.dispose();overlay.geometry.dispose();overlay.material.dispose();
 });
 
+test('the 1991 look only crushes the blacks in XR and is a selectable preset',()=>{
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera();
+  const room=new THREE.Group(),material=new THREE.MeshBasicMaterial();
+  room.add(new THREE.Mesh(new THREE.BoxGeometry(),material));
+  const renderer={xr:{isPresenting:true,enabled:true},render:()=>{},
+    setRenderTarget:()=>assert.fail('XR framebuffer must not be replaced'),
+    getDrawingBufferSize:()=>assert.fail('XR must not allocate desktop targets')};
+  const film=createFilmEffects(renderer,{room});
+  assert.equal(film.setLook('broadcast'),'broadcast');
+  const shader={uniforms:{},fragmentShader:'#include <colorspace_fragment>'};
+  material.onBeforeCompile(shader);
+  film.render(scene,camera,1);
+  assert.equal(shader.uniforms.uXRFilmCrush.value,1);
+  assert.ok(shader.uniforms.uXRFilmStrength.value>0);
+  assert.equal(film.inspect().extraDrawCalls,0,'no grain, smear or flicker passes in the headset');
+  film.setLook('film');film.render(scene,camera,2);
+  assert.equal(shader.uniforms.uXRFilmCrush.value,0);
+  assert.equal(film.setLook('vhs'),'film','unknown looks are ignored');
+  film.dispose();material.dispose();
+});
+
 test('clean and zero-strength views render directly without allocating postprocessing buffers',()=>{
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera();let renders=0;
   const renderer={xr:{isPresenting:false},render:()=>renders++,

@@ -20,8 +20,11 @@ async function frames(page,count=2){
 async function boot(page){
   attach(page);
   await page.goto(base+'/?debug',{waitUntil:'networkidle'});
-  await page.waitForFunction(()=>window.__redRoom?.state.ready,null,{timeout:30000});
-  await page.locator('#enter-desktop').click();
+  await page.waitForFunction(()=>window.__redRoom?.state.ready&&document.body.classList.contains('ready'),null,{timeout:30000});
+  // There is no entry button: a click or a tap on the room steps in.
+  const {width,height}=page.viewportSize();
+  if(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches))await page.touchscreen.tap(width/2,height/2);
+  else await page.mouse.click(width/2,height/2);
   await frames(page);
 }
 const report={passed:false,headsetTested:false};
@@ -32,21 +35,37 @@ try{
   assert.equal(report.initial.emitted,0,'distant stationary entry stays still');
   assert.equal(report.initial.meshes,7);
   report.geometry=await page.evaluate(()=>{
-    const c=window.__redRoom.curtains;let finite=true,pinned=0,vertices=0;
+    const c=window.__redRoom.curtains;let finite=true,pinned=0,vertices=0,normals=true,foldMax=0,shapes=true,pleatMax=0,cornerVertices=0;const heightRange=[Infinity,-Infinity];
     for(const mesh of c.meshes){
       const attr=mesh.geometry.getAttribute('curtainSurface');vertices+=attr.count;
       for(const value of attr.array)if(!Number.isFinite(value))finite=false;
       for(let i=0;i<attr.count;i++)if(attr.getZ(i)===0)pinned++;
+      const fold=mesh.geometry.getAttribute('curtainFold');
+      if(!fold||!mesh.geometry.getAttribute('normal')){normals=false;continue;}
+      for(const value of fold.array)if(!Number.isFinite(value))finite=false;
+      for(let i=0;i<fold.count;i++)foldMax=Math.max(foldMax,Math.abs(fold.getX(i)));
+      // Reshaping data: each vertex's pleat (the fold without the slow sway it
+      // hangs on), its slopes, how much corner it sits in, and its height.
+      const shape=mesh.geometry.getAttribute('curtainShape'),height=mesh.geometry.getAttribute('curtainHeight');
+      if(!shape||!height){shapes=false;continue;}
+      for(const value of shape.array)if(!Number.isFinite(value))finite=false;
+      for(let i=0;i<shape.count;i++){pleatMax=Math.max(pleatMax,Math.abs(shape.getX(i)));if(shape.getW(i)>.6)cornerVertices++;heightRange[0]=Math.min(heightRange[0],height.getX(i));heightRange[1]=Math.max(heightRange[1],height.getX(i));}
     }
-    return {finite,vertices,pinned};
+    return {finite,vertices,pinned,normals,foldMax,shapes,pleatMax,cornerVertices,heightRange};
   });
   assert.ok(report.geometry.finite&&report.geometry.pinned>1000);
+  // Relighting needs recovered normals and fold offsets that stay within the pleats.
+  assert.ok(report.geometry.normals&&report.geometry.foldMax>.03&&report.geometry.foldMax<.3,'velvet fold data');
+  assert.ok(report.geometry.shapes&&report.geometry.pleatMax>.03&&report.geometry.pleatMax<.2,'pleats separated from the sway they hang on');
+  assert.ok(report.geometry.cornerVertices>2000,'corners found for rounding and gathering');
+  assert.deepEqual(report.geometry.heightRange,[0,1]);
   await page.evaluate(()=>window.__redRoom.setPose(-4.3,6,Math.PI/2,-.18));
   await frames(page);
   await page.keyboard.down('KeyW');await page.waitForTimeout(1100);await page.keyboard.up('KeyW');
   await frames(page);
   report.collision=await page.evaluate(()=>({x:window.__redRoom.rig.position.x,...window.__redRoom.curtains.inspect()}));
   assert.ok(report.collision.emitted>0,'real blocked W movement excites cloth');
+  assert.ok(report.collision.presence>.3,'standing close, the cloth eases away from the visitor');
   assert.ok(report.collision.x>-4.8,'curtain still blocks the body');
   await page.keyboard.down('KeyS');await page.waitForTimeout(430);await page.keyboard.up('KeyS');
   await frames(page);
@@ -54,7 +73,6 @@ try{
   // comparison. Only the cloth response changes between the two renders.
   await page.evaluate(()=>{
     const r=window.__redRoom;r.renderer.setAnimationLoop(null);
-    document.getElementById('toast').classList.remove('show');
     r.renderer.render(r.scene,r.camera);
     const gl=r.renderer.getContext(),size=gl.drawingBufferWidth*gl.drawingBufferHeight*4;
     window.__clothPixels=new Uint8Array(size);
@@ -91,6 +109,24 @@ try{
   });
   assert.ok(report.breath.changedPixels>2000,'idle curtains breathe without contact');
   assert.equal(report.breath.emitted,0,'breathing never counts as contact');
+  // Someone walking behind the cloth presses a body's width out of it, seen
+  // here along the waiting room's back curtain.
+  report.walker=await page.evaluate(()=>{
+    const r=window.__redRoom,gl=r.renderer.getContext();
+    const read=()=>{const pixels=new Uint8Array(gl.drawingBufferWidth*gl.drawingBufferHeight*4);gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels;};
+    r.curtains.reset();r.setPose(-2.6,1.2,-.75,-.04);
+    r.curtains.update(0,[]);r.renderer.render(r.scene,r.camera);
+    const before=read(),drawCalls=r.renderer.info.render.calls,walker={at:[-1.06,1.1,-2.03],amount:1};
+    r.curtains.setWalker(walker);r.curtains.update(0,[]);r.curtains.setWalker(walker);r.renderer.render(r.scene,r.camera);
+    const after=read();
+    let changedPixels=0;
+    for(let i=0;i<before.length;i+=4)if(Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2])>6)changedPixels++;
+    return {changedPixels,drawCalls,walkerDrawCalls:r.renderer.info.render.calls,walker:r.curtains.inspect().walker};
+  });
+  await page.screenshot({path:path('curtain-walker.png')});
+  assert.ok(report.walker.changedPixels>8000,`someone behind the cloth shows plainly (${report.walker.changedPixels} pixels)`);
+  assert.equal(report.walker.drawCalls,report.walker.walkerDrawCalls,'no extra draw calls for them either');
+  await page.evaluate(()=>{window.__redRoom.curtains.setWalker(null);window.__redRoom.curtains.update(0,[]);});
   await page.close();
 
   const brush=await browser.newPage({viewport:{width:1280,height:800}});
@@ -119,10 +155,10 @@ try{
   await boot(mobile);
   await mobile.evaluate(()=>window.__redRoom.setPose(-4.3,6,Math.PI/2,-.1));
   await frames(mobile);
-  const forward=await mobile.locator('[data-move="forward"]').boundingBox();
+  // A finger held still on the picture walks forward.
   const cdp=await mobile.context().newCDPSession(mobile);
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:forward.x+forward.width/2,y:forward.y+forward.height/2}]});
-  await mobile.waitForTimeout(1000);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:195,y:500}]});
+  await mobile.waitForTimeout(1300);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   report.mobile=await mobile.evaluate(()=>window.__redRoom.curtains.inspect());
   assert.ok(report.mobile.emitted>0,'touch movement excites the same curtain response');

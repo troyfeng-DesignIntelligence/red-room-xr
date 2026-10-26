@@ -4,3 +4,12 @@ playwright-report/
 *.tar.gz
 *.zip
 .local/
+
+# voice generator intermediates (WAV takes, compiled helper)
+scripts/voice/build/
+
+# Local-only music: a copyrighted recording, never distributed with the project
+dist/assets/music/*.mp3
+
+# Recorded video (npm run capture)
+captures/

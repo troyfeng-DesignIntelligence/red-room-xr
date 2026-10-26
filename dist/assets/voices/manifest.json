@@ -1,0 +1,273 @@
+{
+  "engine": "Windows SAPI double reversal",
+  "lines": [
+    {
+      "id": "shortly",
+      "en": "Please wait here. Someone will be with you shortly.",
+      "zh": "请在这里稍候，马上会有人来。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "01",
+        "from": [
+          0,
+          2.6
+        ],
+        "after": 12
+      },
+      "voice": "Zira",
+      "file": "voices/shortly.mp3",
+      "duration": 5.25
+    },
+    {
+      "id": "cousin",
+      "en": "She's my cousin. But doesn't she look almost exactly like Laura Palmer?",
+      "zh": "她是我表妹。可她看起来是不是跟劳拉·帕尔默一模一样？",
+      "source": "Twin Peaks (1990), episode 2",
+      "trigger": {
+        "type": "room",
+        "room": "02",
+        "from": [
+          -7.2,
+          -6.25
+        ],
+        "phase": "normal"
+      },
+      "voice": "David",
+      "file": "voices/cousin.mp3",
+      "duration": 7.62
+    },
+    {
+      "id": "gone",
+      "en": "She is not here anymore.",
+      "zh": "她已经不在这里了。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "02",
+        "from": [
+          -7.2,
+          -6.25
+        ],
+        "phase": "dream"
+      },
+      "voice": "Zira",
+      "file": "voices/gone.mp3",
+      "duration": 3.17
+    },
+    {
+      "id": "gum",
+      "en": "That gum you like is going to come back in style.",
+      "zh": "你喜欢的那种口香糖，会重新流行起来。",
+      "source": "Twin Peaks (1990), episode 2",
+      "trigger": {
+        "type": "room",
+        "room": "02",
+        "from": [
+          -7.2,
+          -6.25
+        ]
+      },
+      "voice": "David",
+      "file": "voices/gum.mp3",
+      "duration": 4.89
+    },
+    {
+      "id": "waiting",
+      "en": "Someone is waiting behind the curtain.",
+      "zh": "有人在帘子后面等你。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "03",
+        "from": [
+          -14,
+          -2.6
+        ]
+      },
+      "voice": "David",
+      "file": "voices/waiting.mp3",
+      "duration": 4.06
+    },
+    {
+      "id": "empty",
+      "en": "This room was never empty.",
+      "zh": "这个房间从来不是空的。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "03",
+        "from": [
+          -14,
+          -2.6
+        ],
+        "phase": "dream"
+      },
+      "voice": "Zira",
+      "file": "voices/empty.mp3",
+      "duration": 3.24
+    },
+    {
+      "id": "longer",
+      "en": "The way back is always longer.",
+      "zh": "回去的路总是更长。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "04",
+        "phase": "dream"
+      },
+      "voice": "David",
+      "file": "voices/longer.mp3",
+      "duration": 3.74
+    },
+    {
+      "id": "birds",
+      "en": "Where we're from, the birds sing a pretty song, and there's always music in the air.",
+      "zh": "在我们来的地方，鸟儿唱着动听的歌，空气里总飘着音乐。",
+      "source": "Twin Peaks (1990), episode 2",
+      "trigger": {
+        "type": "room",
+        "room": "05",
+        "from": [
+          -24,
+          8
+        ]
+      },
+      "voice": "David",
+      "file": "voices/birds.mp3",
+      "duration": 7.93
+    },
+    {
+      "id": "fire",
+      "en": "Fire walk with me.",
+      "zh": "与火同行。",
+      "source": "Twin Peaks (1990), episode 2",
+      "trigger": {
+        "type": "room",
+        "room": "05",
+        "from": [
+          -24,
+          8
+        ],
+        "phase": "dream"
+      },
+      "voice": "David",
+      "file": "voices/fire.mp3",
+      "duration": 2.77
+    },
+    {
+      "id": "coffee",
+      "en": "Your coffee is getting cold.",
+      "zh": "你的咖啡快凉了。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "05",
+        "from": [
+          -24,
+          8
+        ],
+        "phase": "normal"
+      },
+      "voice": "Zira",
+      "file": "voices/coffee.mp3",
+      "duration": 3.48
+    },
+    {
+      "id": "twentyfive",
+      "en": "I'll see you again in 25 years.",
+      "zh": "二十五年后，我们会再见。",
+      "source": "Twin Peaks (1991), episode 29",
+      "trigger": {
+        "type": "room",
+        "room": "06",
+        "from": [
+          -7,
+          21
+        ],
+        "phase": "normal"
+      },
+      "voice": "Zira",
+      "file": "voices/twentyfive.mp3",
+      "duration": 4.13
+    },
+    {
+      "id": "remembers",
+      "en": "The room remembers you.",
+      "zh": "这个房间记得你。",
+      "source": "original",
+      "trigger": {
+        "type": "room",
+        "room": "06",
+        "from": [
+          -7,
+          21
+        ],
+        "phase": "dream"
+      },
+      "voice": "Zira",
+      "file": "voices/remembers.mp3",
+      "duration": 2.92
+    },
+    {
+      "id": "wow",
+      "en": "Wow, Bob, wow.",
+      "zh": "哇，鲍勃，哇。",
+      "source": "Twin Peaks (1991), episode 29",
+      "trigger": {
+        "type": "room",
+        "room": "06",
+        "from": [
+          -7,
+          21
+        ],
+        "phase": "dream"
+      },
+      "voice": "David",
+      "file": "voices/wow.mp3",
+      "duration": 3.27
+    },
+    {
+      "id": "before",
+      "en": "You have been here before.",
+      "zh": "你来过这里。",
+      "source": "original",
+      "trigger": {
+        "type": "lap",
+        "minLap": 2
+      },
+      "voice": "David",
+      "file": "voices/before.mp3",
+      "duration": 2.9
+    },
+    {
+      "id": "notme",
+      "en": "When you see me again, it won't be me.",
+      "zh": "当你再见到我，那已不是我。",
+      "source": "Twin Peaks (1991), episode 29",
+      "trigger": {
+        "type": "lap",
+        "minLap": 3,
+        "once": true
+      },
+      "voice": "Zira",
+      "file": "voices/notme.mp3",
+      "duration": 4.46
+    },
+    {
+      "id": "again",
+      "en": "It is happening again.",
+      "zh": "又发生了。",
+      "source": "Twin Peaks (1990), episode 14",
+      "trigger": {
+        "type": "lap",
+        "minLap": 4,
+        "once": true
+      },
+      "voice": "David",
+      "file": "voices/again.mp3",
+      "duration": 2.7
+    }
+  ]
+}

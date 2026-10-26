@@ -53,13 +53,20 @@ function createCheckpoints(route, spacing = 4.5) {
   return checkpoints;
 }
 
-export function createSimulation(spatial, { onLapChange = () => {}, checkpointRadius = 1.7 } = {}) {
+// `roomOf(x, z)` names the room at a point. Given it, a circuit closes on
+// coming back into the starting room by another doorway than the one left by,
+// whichever way round; out and back the same way never counts, and side rooms
+// may be skipped. The checkpoints then only lead the route guide. Without it,
+// a circuit is the ordered checkpoints back to the start.
+export function createSimulation(spatial, { onLapChange = () => {}, checkpointRadius = 1.7, roomOf = null } = {}) {
   const polygons = spatial.walkablePolygons ?? [];
   const walls = spatial.wallSegments ?? [];
   const obstacles = spatial.obstacles ?? [];
   const checkpoints = spatial.checkpoints ?? createCheckpoints(spatial.route ?? []);
   const state = { lap: 1, phase: 'normal', checkpointIndex: 1, progress: 0 };
   let previousProgressPosition = null;
+  const spawn = spatial.spawn?.position;
+  let home = null, room = null, leftTo = null;
   const cellSize = 2;
   const wallCells = new Map();
   const polygonBounds = polygons.map(polygon => [
@@ -93,7 +100,8 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
       point[1] >= minZ - EPSILON && point[1] <= maxZ + EPSILON && pointInPolygon(point, polygon);
   });
 
-  function isValidPosition(x, z, radius = 0.2) {
+  // A circle on the floor and clear of every curtain line, furniture aside.
+  function clearOfWalls(x, z, radius = 0.2) {
     if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(radius) || radius < 0) return false;
     const point = [x, z];
     if (!onFloor(point)) return false;
@@ -107,7 +115,11 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
     for (const index of nearbyWalls(x - radius - EPSILON, z - radius - EPSILON, x + radius + EPSILON, z + radius + EPSILON)) {
       if (distanceToSegment(point, ...walls[index]) < radius + EPSILON) return false;
     }
-    return !activeObstacles().some(obstacle => distance(point, obstacle.center) < radius + obstacle.radius);
+    return true;
+  }
+
+  function isValidPosition(x, z, radius = 0.2) {
+    return clearOfWalls(x, z, radius) && !activeObstacles().some(obstacle => distance([x, z], obstacle.center) < radius + obstacle.radius);
   }
 
   function wallBetween(from, to) {
@@ -119,6 +131,19 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
       if (segmentsIntersect(a, b, ...walls[index])) return true;
     }
     return false;
+  }
+
+  // How many curtain lines a sound crosses between two points.
+  function wallsBetween(from, to) {
+    const a = asPoint(from), b = asPoint(to);
+    let count = 0;
+    for (const index of nearbyWalls(
+      Math.min(a[0], b[0]) - EPSILON, Math.min(a[1], b[1]) - EPSILON,
+      Math.max(a[0], b[0]) + EPSILON, Math.max(a[1], b[1]) + EPSILON,
+    )) {
+      if (segmentsIntersect(a, b, ...walls[index])) count++;
+    }
+    return count;
   }
 
   function traceSegment(from, to, radius = 0.2) {
@@ -164,13 +189,51 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
     return traceSegment(a, b, 0.2).clear;
   }
 
+  function completeLap() {
+    state.lap++;
+    state.phase = state.lap % 2 === 0 ? 'dream' : 'normal';
+    state.checkpointIndex = 1;
+    state.progress = 0;
+    onLapChange({ ...state });
+  }
+
+  // True when stepping into `next` closes a circuit.
+  function enterRoom(next) {
+    if (!next || next === room) return false;
+    const from = room;
+    room = next;
+    if (from === home) { leftTo = next; return false; }
+    if (next !== home) return false;
+    const closed = leftTo !== null && from !== leftTo;
+    leftTo = null;
+    return closed;
+  }
+
   function updateProgress(x, z) {
-    if (!checkpoints.length || !isValidPosition(x, z, 0.08)) return state;
+    if ((!checkpoints.length && !roomOf) || !isValidPosition(x, z, 0.08)) return state;
     const here = [x, z];
     const previous = previousProgressPosition ?? here;
+    if (roomOf && !previousProgressPosition) {
+      home ??= spawn ? roomOf(spawn[0], spawn[2]) : roomOf(x, z);
+      room = roomOf(x, z);
+    }
     previousProgressPosition = here;
     // A reset or an arbitrary debug jump cannot complete the circuit.
-    if (distance(previous, here) > 6.25 || !traceSegment(previous, here, 0.08).clear) return state;
+    if (distance(previous, here) > 6.25 || !traceSegment(previous, here, 0.08).clear) {
+      if (roomOf) { room = roomOf(x, z); leftTo = null; }
+      return state;
+    }
+    if (roomOf) {
+      // Every room on the way, so a teleport through a doorway counts too.
+      const samples = Math.ceil(distance(previous, here) / 0.25);
+      for (let i = 1; i <= samples; i++) {
+        const t = i / samples;
+        if (enterRoom(roomOf(previous[0] + (here[0] - previous[0]) * t, previous[1] + (here[1] - previous[1]) * t))) {
+          completeLap();
+          return state;
+        }
+      }
+    }
     let advanced = false;
     while (state.checkpointIndex < checkpoints.length) {
       const checkpoint = checkpoints[state.checkpointIndex];
@@ -182,11 +245,8 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
       state.checkpointIndex++;
       advanced = true;
       if (last) {
-        state.lap++;
-        state.phase = state.lap % 2 === 0 ? 'dream' : 'normal';
-        state.checkpointIndex = 1;
-        state.progress = 0;
-        onLapChange({ ...state });
+        if (roomOf) { state.checkpointIndex = 1; break; }
+        completeLap();
         return state;
       }
     }
@@ -197,11 +257,12 @@ export function createSimulation(spatial, { onLapChange = () => {}, checkpointRa
   function resetProgress() {
     Object.assign(state, { lap: 1, phase: 'normal', checkpointIndex: 1, progress: 0 });
     previousProgressPosition = null;
+    room = leftTo = null;
     onLapChange({ ...state });
   }
 
   return {
-    floorY: spatial.floorY ?? 0, state, checkpoints, isValidPosition, wallBetween,
+    floorY: spatial.floorY ?? 0, state, checkpoints, isValidPosition, clearOfWalls, wallBetween, wallsBetween,
     traceSegment, move, canTeleport, updateProgress, resetProgress,
   };
 }

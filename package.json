@@ -6,14 +6,15 @@
     "test": "node --test tests/*.test.mjs",
     "preview": "node server.mjs",
     "vendor": "node scripts/vendor.mjs",
-    "check": "node --check dist/js/main.js && node --check dist/js/simulation.js && node --check dist/js/xr-controls.js && node --check dist/js/presentation.js && node --check dist/js/film.js && node --check dist/js/curtains.js && node --check dist/js/curtain-surfaces.js && node --check dist/js/curtain-motion.js && node --check dist/js/locomotion.js && node --check dist/js/audio.js && node --check server.mjs",
+    "check": "node --check dist/js/main.js && node --check dist/js/simulation.js && node --check dist/js/xr-controls.js && node --check dist/js/presentation.js && node --check dist/js/film.js && node --check dist/js/curtains.js && node --check dist/js/curtain-surfaces.js && node --check dist/js/curtain-motion.js && node --check dist/js/locomotion.js && node --check dist/js/audio.js && node --check dist/js/voice-director.js && node --check dist/js/rooms.js && node --check dist/js/music-field.js && node --check dist/js/follower.js && node --check dist/js/flicker.js && node --check dist/js/furniture.js && node --check dist/js/curtain-walker.js && node --check dist/js/haze.js && node --check dist/js/watchers.js && node --check scripts/capture/capture.mjs && node --check scripts/capture/runtime.js && node --check scripts/capture/director.js && node --check scripts/capture/path.js && node --check scripts/capture/lens.js && node --check server.mjs",
     "qa": "node tests/browser-qa.mjs",
     "qa:curtains": "node tests/curtain-browser-qa.mjs",
-    "qa:film": "node tests/film-browser-qa.mjs"
+    "qa:film": "node tests/film-browser-qa.mjs",
+    "capture": "node scripts/capture/capture.mjs"
   },
   "keywords": [],
   "author": "",
-  "license": "SEE LICENSE IN README.md",
+  "license": "SEE LICENSE IN LICENSE-ASSETS.md",
   "private": true,
   "type": "module",
   "dependencies": {

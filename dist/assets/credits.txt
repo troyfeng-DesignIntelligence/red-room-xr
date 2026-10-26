@@ -6,3 +6,8 @@ https://creativecommons.org/licenses/by-nc-sa/4.0/
 Venus de Milo scan — Statens Museum for Kunst (SMK), KAS434 — CC0 / public domain.
 The Medici-derived geometry and combined environment/repeated-props assets are noncommercial share-alike derivatives.
 The original Blender files remain unchanged. Meshes simplified and native stage illumination baked for WebXR.
+Footsteps — BigSoundBank #0165, "Man Footsteps on the Wooden Floor" by DavidGreck — CC0 1.0 / public domain; cut into single steps by scripts/footsteps/prepare.py.
+https://bigsoundbank.com/man-footsteps-on-the-wooden-floor-s0165.html
+Backwards voices — Windows speech synthesis (Microsoft David / Microsoft Zira), double reversal as in the series: each word's phonemes are spoken backwards, then the recording is reversed (scripts/voice).
+Eight of the sixteen lines quote Twin Peaks dialogue: Episode 2 "Zen, or the Skill to Catch a Killer" (1990), Episode 14 "Lonely Souls" (1990) and Episode 29 "Beyond Life and Death" (1991). The dialogue belongs to its rights holders and is quoted briefly in this noncommercial fan study; the other lines are original.
+Distant music (local only) — Angelo Badalamenti, "Falling" (Twin Peaks theme). The recording belongs to its rights holders; the file is kept out of the project and is not distributed.

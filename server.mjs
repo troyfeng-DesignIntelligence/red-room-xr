@@ -17,7 +17,19 @@ const mime = {
   '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8', '.wasm': 'application/wasm',
   '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav',
 };
+
+// A single byte range ("bytes=0-99", "bytes=100-", "bytes=-100"), so media can
+// seek and loop. Null when unsatisfiable; undefined for none or many ranges.
+export function parseRange(header, size) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? '');
+  if (!match || (!match[1] && !match[2])) return undefined;
+  if (match[1] && match[2] && Number(match[2]) < Number(match[1])) return undefined;
+  const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  const end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+  return start <= end && start < size ? { start, end } : null;
+}
 
 function send(req, res, status, body, headers = {}) {
   const bytes = Buffer.from(body);
@@ -66,6 +78,7 @@ export function createAppServer() {
       const headers = {
         'Content-Type': mime[extname(actualPath).toLowerCase()] || 'application/octet-stream',
         'Cache-Control': 'no-cache',
+        'Accept-Ranges': 'bytes',
         ETag: etag,
         'Last-Modified': info.mtime.toUTCString(),
       };
@@ -74,12 +87,19 @@ export function createAppServer() {
         res.end();
         return;
       }
-      res.writeHead(200, { ...headers, 'Content-Length': info.size });
+      const range = parseRange(req.headers.range, info.size);
+      if (range === null) {
+        res.writeHead(416, { ...headers, 'Content-Range': `bytes */${info.size}`, 'Content-Length': 0 });
+        res.end();
+        return;
+      }
+      if (range) res.writeHead(206, { ...headers, 'Content-Range': `bytes ${range.start}-${range.end}/${info.size}`, 'Content-Length': range.end - range.start + 1 });
+      else res.writeHead(200, { ...headers, 'Content-Length': info.size });
       if (req.method === 'HEAD') {
         res.end();
         return;
       }
-      const stream = createReadStream(actualPath);
+      const stream = createReadStream(actualPath, range ?? {});
       stream.on('error', () => res.destroy());
       res.on('close', () => stream.destroy());
       stream.pipe(res);

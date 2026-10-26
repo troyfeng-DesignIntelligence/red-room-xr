@@ -3,7 +3,7 @@
 const EPSILON = 1e-8;
 const LIFETIME = 4;
 const EMISSION_INTERVAL = 0.12;
-const MAX_STRENGTH = 0.1;
+const MAX_STRENGTH = 0.2;
 const MAX_FRAME = 0.25;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
@@ -56,8 +56,10 @@ export function createCurtainMotion(panels = [], { maxImpulses = 6 } = {}) {
   }
 
   function emit(source, hit, speed, tracking, velocityX, velocityZ) {
+    // Heavy velvet still answers a passing body plainly: up to about 15 cm at
+    // the point of contact, less the further away the body brushes past.
     const proximity = smooth(clamp(1 - hit.distance / source.radius, 0, 1));
-    const strength = clamp((0.038 + 0.062 * (1 - Math.exp(-speed / 1.2))) * proximity, 0, MAX_STRENGTH);
+    const strength = clamp((0.07 + 0.13 * (1 - Math.exp(-speed / 1.0))) * proximity, 0, MAX_STRENGTH);
     if (strength < 0.001) return;
     let side = (hit.x - source.x) * hit.nx + (hit.z - source.z) * hit.nz;
     if (Math.abs(side) < EPSILON) {
@@ -139,6 +141,23 @@ export function createCurtainMotion(panels = [], { maxImpulses = 6 } = {}) {
     return impulses;
   }
 
+  // A push from something that is not a tracked body, such as someone behind
+  // the cloth: a wave at the curtain point nearest `point` ({ x, y, z }),
+  // pushed away from it. Returns whether a curtain was there to touch.
+  function touch(point, strength, activePanelIds) {
+    const hit = nearestPanel({ radius: 0, ...point }, activePanelIds);
+    if (!hit) return false;
+    const side = (hit.x - point.x) * hit.nx + (hit.z - point.z) * hit.nz < 0 ? -1 : 1;
+    const slot = impulses.find(impulse => !impulse.active) ??
+      impulses.reduce((oldest, impulse) => impulse.age > oldest.age ? impulse : oldest);
+    Object.assign(slot, { active: true, panelId: hit.panel.id, age: 0, strength: clamp(finite(strength), 0, MAX_STRENGTH) });
+    Object.assign(slot.position, { x: hit.x, y: clamp(point.y, hit.panel.minY, hit.panel.maxY), z: hit.z });
+    Object.assign(slot.direction, { x: hit.nx * side, z: hit.nz * side });
+    emitted++;
+    maxStrength = Math.max(maxStrength, slot.strength);
+    return true;
+  }
+
   function reset() {
     previous.clear();
     time = 0; emitted = 0; maxStrength = 0;
@@ -152,5 +171,9 @@ export function createCurtainMotion(panels = [], { maxImpulses = 6 } = {}) {
       emitted, maxStrength, time, trackedSources: previous.size };
   }
 
-  return { update, reset, impulses, inspect };
+  // The curtain line nearest a point, for the cloth's slower response to a
+  // visitor standing close: { panel, x, z, distance, nx, nz } or null.
+  const nearest = (source, activePanelIds) => nearestPanel({ radius: 0, ...source }, activePanelIds);
+
+  return { update, touch, reset, impulses, inspect, nearest };
 }

@@ -44,6 +44,23 @@ test('local server serves the project independently of working directory', async
     assert.equal(result.status, 304);
     assert.equal(await result.text(), '');
   });
+  await t.test('voice clips are served as audio', async () => {
+    const result = await fetch(`${base}/assets/voices/waiting.mp3`, { method: 'HEAD' });
+    assert.equal(result.status, 200);
+    assert.equal(result.headers.get('content-type'), 'audio/mpeg');
+    assert.equal(result.headers.get('accept-ranges'), 'bytes');
+  });
+  await t.test('byte ranges let media seek and loop', async () => {
+    const whole = Buffer.from(await (await fetch(`${base}/assets/voices/waiting.mp3`)).arrayBuffer());
+    const part = await fetch(`${base}/assets/voices/waiting.mp3`, { headers: { Range: 'bytes=100-199' } });
+    assert.equal(part.status, 206);
+    assert.equal(part.headers.get('content-range'), `bytes 100-199/${whole.length}`);
+    assert.deepEqual(Buffer.from(await part.arrayBuffer()), whole.subarray(100, 200));
+    const tail = await fetch(`${base}/assets/voices/waiting.mp3`, { headers: { Range: 'bytes=-50' } });
+    assert.deepEqual(Buffer.from(await tail.arrayBuffer()), whole.subarray(whole.length - 50));
+    const beyond = await fetch(`${base}/assets/voices/waiting.mp3`, { headers: { Range: `bytes=${whole.length}-` } });
+    assert.equal(beyond.status, 416);
+  });
   await t.test('invalid paths and nonpublic files cannot be served', async () => {
     for (const [path, status] of [['/%zz', 400], ['/%00', 400], ['/..%5Cserver.mjs', 400], ['/.openai/hosting.json', 403], ['/server.mjs', 404], ['/no-such-asset.glb', 404]]) {
       assert.equal((await fetch(base + path)).status, status, path);

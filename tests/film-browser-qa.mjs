@@ -15,21 +15,25 @@ function attach(page){
   page.on('response',response=>{if(response.status()>=400)errors.push(`${response.status()} ${response.url()}`);});
   page.on('request',request=>requests.push(request.url()));
 }
-async function boot(page){
+// There is no interface: a click or a tap on the room steps in. Looks are
+// chosen by the address (?look=) or the debug hook; V compares with none.
+async function enter(page){
+  const {width,height}=page.viewportSize();
+  if(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches))await page.touchscreen.tap(width/2,height/2);
+  else await page.mouse.click(width/2,height/2);
+  await page.waitForFunction(()=>window.__redRoom.state.exploring&&!document.body.classList.contains('entering'),null,{timeout:5000});
+  await page.evaluate(()=>{if(document.pointerLockElement)document.exitPointerLock();});
+}
+async function boot(page,query=''){
   attach(page);
-  await page.goto(base+'/?debug',{waitUntil:'networkidle'});
-  await page.waitForFunction(()=>window.__redRoom?.state.ready&&window.__redRoom?.film&&window.__redRoom?.renderFrame,null,{timeout:60000});
-  await page.locator('#enter-desktop').click();
-  // Wait out the entry fade; Esc would release the mouse before using controls.
-  await page.waitForFunction(()=>!document.body.classList.contains('entering'),null,{timeout:5000});
-  await page.evaluate(()=>{if(document.pointerLockElement)document.exitPointerLock();window.__redRoom.revealChrome(60000);});
-  await page.waitForTimeout(250);
+  await page.goto(base+'/?debug'+query,{waitUntil:'networkidle'});
+  await page.waitForFunction(()=>window.__redRoom?.state.ready&&window.__redRoom?.film&&window.__redRoom?.renderFrame&&document.body.classList.contains('ready'),null,{timeout:60000});
+  await enter(page);
 }
 async function capture(page,name,look,strength=.65){
   const summary=await page.evaluate(({name,look,strength})=>{
     const r=window.__redRoom;
     r.film.setLook(look);r.film.setStrength(strength);
-    document.getElementById('toast').classList.remove('show');
     r.renderFrame(12);
     const gl=r.renderer.getContext(),width=gl.drawingBufferWidth,height=gl.drawingBufferHeight;
     const pixels=new Uint8Array(width*height*4);
@@ -40,7 +44,7 @@ async function capture(page,name,look,strength=.65){
     return {width,height,meanRGB:sum/(width*height*3),nonBlack,settings:r.film.inspect()};
   },{name,look,strength});
   assert.ok(summary.nonBlack>summary.width*summary.height*.35,`${name} renders the room instead of a blank framebuffer`);
-  await page.waitForTimeout(250); // Let DOM toast fades finish; the WebGL frame remains frozen.
+  await page.waitForTimeout(250); // The WebGL frame remains frozen.
   await page.screenshot({path:path(`film-${name}.png`)});
   return summary;
 }
@@ -61,22 +65,12 @@ try{
   const page=await browser.newPage({viewport:{width:1280,height:800},deviceScaleFactor:1});
   await boot(page);
   report.initial=await page.evaluate(()=>window.__redRoom.film.inspect());
-  assert.equal(report.initial.look,'film','first visit defaults to film');
+  assert.equal(report.initial.look,'broadcast','first visit defaults to the 1991 look');
   assert.equal(report.initial.strength,.65,'default strength is subtle');
-  await page.locator('#look-button').click();
-  assert.equal(await page.locator('#look-dialog').evaluate(dialog=>dialog.open),true);
-  for(const look of ['clean','dream','film']){
-    await page.locator(`#look-dialog [data-look="${look}"]`).click();
-    assert.equal(await page.evaluate(()=>window.__redRoom.film.inspect().look),look,'preset UI updates renderer');
-    assert.equal(await page.locator(`#look-dialog [data-look="${look}"]`).getAttribute('aria-pressed'),'true','preset highlight follows the rendered look');
-  }
-  await page.waitForTimeout(250);
-  await page.screenshot({path:path('film-desktop-controls.png')});
-  await page.locator('#look-dialog [data-close]').first().click();
   await page.keyboard.press('KeyV');
   assert.equal(await page.evaluate(()=>window.__redRoom.film.inspect().look),'clean','V provides a clean comparison');
   await page.keyboard.press('KeyV');
-  assert.equal(await page.evaluate(()=>window.__redRoom.film.inspect().look),'film','V restores the previous look');
+  assert.equal(await page.evaluate(()=>window.__redRoom.film.inspect().look),'broadcast','V restores the look');
 
   // Use real keyboard contact before freezing animation for pixel comparisons.
   await page.evaluate(()=>{const r=window.__redRoom;r.setPose(-4.3,6,Math.PI/2,-.18);r.curtains.reset();});
@@ -85,7 +79,7 @@ try{
   report.curtain=await page.evaluate(()=>({x:window.__redRoom.rig.position.x,...window.__redRoom.curtains.inspect()}));
   assert.ok(report.curtain.emitted>0,'film mode preserves actual contact-driven curtain response');
   assert.ok(report.curtain.x>-4.8,'post-processing does not alter collision');
-  await page.evaluate(()=>{const r=window.__redRoom;r.renderer.setAnimationLoop(null);r.setPose(-3.7,6,1.35,-.16);document.getElementById('toast').classList.remove('show');});
+  await page.evaluate(()=>{const r=window.__redRoom;r.renderer.setAnimationLoop(null);r.setPose(-3.7,6,1.35,-.16);});
   await capture(page,'curtain-moving','film');
   await page.evaluate(()=>window.__redRoom.curtains.reset());
   await capture(page,'curtain-rest','film');
@@ -96,15 +90,21 @@ try{
   report.clean=await capture(page,'clean','clean');
   report.film=await capture(page,'film','film');
   report.dream=await capture(page,'dream','dream');
+  report.broadcast=await capture(page,'broadcast','broadcast');
   report.zero=await capture(page,'zero','film',0);
+  report.zeroBroadcast=await capture(page,'zero-broadcast','broadcast',0);
   report.differences={
     film:await compare(page,'clean','film'),
     dream:await compare(page,'film','dream'),
-    zero:await compare(page,'clean','zero')
+    broadcast:await compare(page,'film','broadcast'),
+    zero:await compare(page,'clean','zero'),
+    zeroBroadcast:await compare(page,'clean','zero-broadcast')
   };
   assert.ok(report.differences.film.changedFraction>.05,'film modifies the rendered room, not just the DOM');
   assert.ok(report.differences.dream.changedFraction>.01,'dream has a distinct visible treatment');
+  assert.ok(report.differences.broadcast.changedFraction>.05,'the 1991 look has its own grain, tone and colour smear');
   assert.ok(report.differences.zero.meanDifference<.05&&report.differences.zero.changedFraction<.001,'zero intensity preserves the clean image');
+  assert.ok(report.differences.zeroBroadcast.meanDifference<.05&&report.differences.zeroBroadcast.changedFraction<.001,'zero intensity 1991 preserves the clean image');
   await page.setViewportSize({width:900,height:650});
   await page.waitForFunction(()=>window.__redRoom.renderer.domElement.width===900&&window.__redRoom.renderer.domElement.height===650);
   report.resized=await capture(page,'resized','film');
@@ -112,33 +112,32 @@ try{
   assert.equal(report.resized.height,650);
   await page.close();
 
+  // The 4:3 broadcast frame, asked for by the address: a centred 4:3 canvas
+  // whose render targets follow it.
+  const framed=await browser.newPage({viewport:{width:900,height:650},deviceScaleFactor:1});
+  await boot(framed,'&frame=4:3&look=film');
+  assert.equal(await framed.evaluate(()=>window.__redRoom.film.inspect().look),'film','the address picks the look');
+  await framed.waitForFunction(()=>window.__redRoom.renderer.domElement.width===867&&window.__redRoom.renderer.domElement.height===650);
+  await framed.evaluate(()=>window.__redRoom.renderer.setAnimationLoop(null));
+  report.frame43=await capture(framed,'frame43','broadcast');
+  assert.equal(report.frame43.width,867,'4:3 frame keeps the full height');
+  assert.equal(report.frame43.height,650);
+  await framed.screenshot({path:path('film-frame43.png')});
+  await framed.close();
+
   const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
   await boot(mobile);
-  await mobile.locator('#look-button').tap();
-  assert.equal(await mobile.locator('#look-dialog').evaluate(dialog=>dialog.open),true);
-  const bounds=await mobile.locator('#look-dialog').boundingBox();
-  assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=391&&bounds.y+bounds.height<=845,'mobile look panel fits the screen');
-  for(const look of ['clean','film','dream'])assert.ok(await mobile.locator(`#look-dialog [data-look="${look}"]`).isVisible());
-  await mobile.locator('#look-dialog [data-look="dream"]').tap();
-  await mobile.locator('#look-strength').evaluate(input=>{
-    const min=Number(input.min)||0,max=Number(input.max)||100;
-    input.value=String(min+(max-min)*.35);input.dispatchEvent(new Event('input',{bubbles:true}));
-  });
-  report.mobile=await mobile.evaluate(()=>({settings:window.__redRoom.film.inspect(),fits:document.documentElement.scrollWidth<=innerWidth}));
-  assert.equal(report.mobile.settings.look,'dream');
-  assert.ok(Math.abs(report.mobile.settings.strength-.35)<.011,'mobile intensity slider controls the film shader');
+  report.mobile=await mobile.evaluate(()=>({settings:window.__redRoom.film.inspect(),fits:document.documentElement.scrollWidth<=innerWidth,buttons:document.querySelectorAll('button:not(#error button)').length}));
+  assert.equal(report.mobile.settings.look,'broadcast');
   assert.equal(report.mobile.fits,true);
-  await mobile.waitForTimeout(250);
-  await mobile.screenshot({path:path('film-mobile-controls.png')});
-  await mobile.locator('#look-dialog [data-close]').first().tap();
-  assert.equal(await mobile.locator('#touch-controls').isVisible(),true,'mobile controls remain available');
-  await mobile.evaluate(()=>{const r=window.__redRoom;r.renderer.setAnimationLoop(null);document.getElementById('toast').classList.remove('show');});
+  assert.equal(report.mobile.buttons,0,'no controls on a phone either');
+  await mobile.evaluate(()=>window.__redRoom.renderer.setAnimationLoop(null));
   report.mobileFrame=await capture(mobile,'mobile','dream',.35);
   await mobile.close();
   assert.deepEqual(errors,[],'no JavaScript, shader, or asset errors');
   assert.ok(requests.every(url=>new URL(url).origin===new URL(base).origin),'runtime stays local');
   report.passed=true;report.errors=errors;report.requests=requests.length;
-  report.scope='Desktop/mobile Chromium WebGL; fixed-pose fixed-time framebuffer comparisons; actual keyboard curtain contact; look dialog, keyboard comparison, strength control and resize. No physical headset test.';
+  report.scope='Desktop/mobile Chromium WebGL; fixed-pose fixed-time framebuffer comparisons; actual keyboard curtain contact; the 1991 look by default, V comparison, looks and strengths through the renderer, a look and the 4:3 frame asked for by the address, resize. No physical headset test.';
   await writeFile(new URL('film-browser-qa.json',out),JSON.stringify(report,null,2));
   console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}

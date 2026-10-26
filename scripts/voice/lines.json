@@ -1,0 +1,88 @@
+{
+  "note": "Lines spoken backwards in the Red Room. `en` is the subtitle and, unless `say` is given, what the voice speaks. Original-series lines are short quotations credited in the credits dialog; prefer original lines for any public release. A room line speaks after `after` seconds in its room (default 1.5; codes from dist/js/rooms.js), heard from `from`, [x, z] in metres, or from all around when there is none; a room's lines take turns. A lap line answers a completed circuit. After changing only triggers or Chinese subtitles, run generate.py --manifest-only.",
+  "lines": [
+    {
+      "id": "shortly", "voice": "Zira", "source": "original",
+      "en": "Please wait here. Someone will be with you shortly.", "zh": "请在这里稍候，马上会有人来。",
+      "trigger": { "type": "room", "room": "01", "from": [0, 2.6], "after": 12 }
+    },
+    {
+      "id": "cousin", "voice": "David", "source": "Twin Peaks (1990), episode 2",
+      "en": "She's my cousin. But doesn't she look almost exactly like Laura Palmer?",
+      "zh": "她是我表妹。可她看起来是不是跟劳拉·帕尔默一模一样？",
+      "trigger": { "type": "room", "room": "02", "from": [-7.2, -6.25], "phase": "normal" }
+    },
+    {
+      "id": "gone", "voice": "Zira", "source": "original",
+      "en": "She is not here anymore.", "zh": "她已经不在这里了。",
+      "trigger": { "type": "room", "room": "02", "from": [-7.2, -6.25], "phase": "dream" }
+    },
+    {
+      "id": "gum", "voice": "David", "source": "Twin Peaks (1990), episode 2",
+      "en": "That gum you like is going to come back in style.", "zh": "你喜欢的那种口香糖，会重新流行起来。",
+      "trigger": { "type": "room", "room": "02", "from": [-7.2, -6.25] }
+    },
+    {
+      "id": "waiting", "voice": "David", "source": "original",
+      "en": "Someone is waiting behind the curtain.", "zh": "有人在帘子后面等你。",
+      "trigger": { "type": "room", "room": "03", "from": [-14, -2.6] }
+    },
+    {
+      "id": "empty", "voice": "Zira", "source": "original",
+      "en": "This room was never empty.", "zh": "这个房间从来不是空的。",
+      "trigger": { "type": "room", "room": "03", "from": [-14, -2.6], "phase": "dream" }
+    },
+    {
+      "id": "longer", "voice": "David", "source": "original",
+      "en": "The way back is always longer.", "zh": "回去的路总是更长。",
+      "trigger": { "type": "room", "room": "04", "phase": "dream" }
+    },
+    {
+      "id": "birds", "voice": "David", "source": "Twin Peaks (1990), episode 2",
+      "en": "Where we're from, the birds sing a pretty song, and there's always music in the air.",
+      "zh": "在我们来的地方，鸟儿唱着动听的歌，空气里总飘着音乐。",
+      "trigger": { "type": "room", "room": "05", "from": [-24, 8] }
+    },
+    {
+      "id": "fire", "voice": "David", "source": "Twin Peaks (1990), episode 2",
+      "en": "Fire walk with me.", "zh": "与火同行。",
+      "trigger": { "type": "room", "room": "05", "from": [-24, 8], "phase": "dream" }
+    },
+    {
+      "id": "coffee", "voice": "Zira", "source": "original",
+      "en": "Your coffee is getting cold.", "zh": "你的咖啡快凉了。",
+      "trigger": { "type": "room", "room": "05", "from": [-24, 8], "phase": "normal" }
+    },
+    {
+      "id": "twentyfive", "voice": "Zira", "source": "Twin Peaks (1991), episode 29",
+      "en": "I'll see you again in 25 years.", "say": "I'll see you again in twenty five years.",
+      "zh": "二十五年后，我们会再见。",
+      "trigger": { "type": "room", "room": "06", "from": [-7, 21], "phase": "normal" }
+    },
+    {
+      "id": "remembers", "voice": "Zira", "source": "original",
+      "en": "The room remembers you.", "zh": "这个房间记得你。",
+      "trigger": { "type": "room", "room": "06", "from": [-7, 21], "phase": "dream" }
+    },
+    {
+      "id": "wow", "voice": "David", "source": "Twin Peaks (1991), episode 29",
+      "en": "Wow, Bob, wow.", "zh": "哇，鲍勃，哇。",
+      "trigger": { "type": "room", "room": "06", "from": [-7, 21], "phase": "dream" }
+    },
+    {
+      "id": "before", "voice": "David", "source": "original",
+      "en": "You have been here before.", "zh": "你来过这里。",
+      "trigger": { "type": "lap", "minLap": 2 }
+    },
+    {
+      "id": "notme", "voice": "Zira", "source": "Twin Peaks (1991), episode 29",
+      "en": "When you see me again, it won't be me.", "zh": "当你再见到我，那已不是我。",
+      "trigger": { "type": "lap", "minLap": 3, "once": true }
+    },
+    {
+      "id": "again", "voice": "David", "source": "Twin Peaks (1990), episode 14",
+      "en": "It is happening again.", "zh": "又发生了。",
+      "trigger": { "type": "lap", "minLap": 4, "once": true }
+    }
+  ]
+}

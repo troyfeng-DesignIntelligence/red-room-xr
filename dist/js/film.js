@@ -6,7 +6,7 @@ const vertexShader=`
 `;
 
 const gradeGLSL=`
-  vec3 filmTone(vec3 color,float dream){
+  vec3 filmTone(vec3 color,float dream,float crush){
     float luma=dot(color,vec3(0.2126,0.7152,0.0722));
     // Film keeps the velvet's saturation; only the dream softens it a little.
     vec3 toned=mix(vec3(luma),color,1.0-dream*0.06);
@@ -14,8 +14,9 @@ const gradeGLSL=`
     toned=toned/(vec3(1.0)+toned*0.105);
     float shadows=pow(1.0-clamp(luma,0.0,1.0),2.0);
     // A warm lift in the blacks, violet in the dream, instead of a grey veil.
-    toned+=mix(vec3(0.0030,0.0012,0.0009),vec3(0.0044,0.0034,0.0050),dream)*shadows;
-    return toned;
+    toned+=mix(vec3(0.0030,0.0012,0.0009),vec3(0.0044,0.0034,0.0050),dream)*shadows*(1.0-crush);
+    // The 1991 transfer crushes the toe instead: the blacks sink to nothing.
+    return mix(toned,toned*toned/(toned+vec3(0.006)),crush);
   }
 `;
 
@@ -38,45 +39,77 @@ const filmFragment=`
   uniform sampler2D tSoft;
   uniform float uStrength;
   uniform float uDream;
+  uniform float uBroadcast;
+  uniform float uFlicker;
   uniform float uGrainFrame;
   uniform float uPixelRatio;
+  uniform vec2 uTexel;
   varying vec2 vUv;
   ${gradeGLSL}
+  const vec3 LUMA=vec3(0.2126,0.7152,0.0722);
   float grainHash(vec2 p){
     vec3 q=fract(vec3(p.xyx)*0.1031);
     q+=dot(q,q.yzx+33.33+uGrainFrame*0.013);
     return fract((q.x+q.y)*q.z);
   }
+  float grainNoise(vec2 p){
+    vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+    return mix(mix(grainHash(i),grainHash(i+vec2(1,0)),f.x),mix(grainHash(i+vec2(0,1)),grainHash(i+vec2(1,1)),f.x),f.y);
+  }
+  vec3 sceneAt(vec2 pixels){return texture2D(tScene,vUv+pixels*uTexel).rgb;}
   void main(){
     vec3 original=texture2D(tScene,vUv).rgb;
     vec3 soft=texture2D(tSoft,vUv).rgb;
-    float light=dot(soft,vec3(0.2126,0.7152,0.0722));
-    float diffusion=mix(0.14,0.32,uDream)*uStrength;
+    if(uBroadcast>0.5){
+      // 1991 telecine: a slightly soft picture whose colour carries less
+      // detail than its luma and smears sideways, red registering a touch right.
+      vec3 blurred=(sceneAt(vec2(1.2,0))+sceneAt(vec2(-1.2,0))+sceneAt(vec2(0,1.2))+sceneAt(vec2(0,-1.2)))*0.15
+        +(sceneAt(vec2(0.85,0.85))+sceneAt(vec2(-0.85,0.85))+sceneAt(vec2(0.85,-0.85))+sceneAt(vec2(-0.85,-0.85)))*0.1;
+      vec3 picture=mix(original,blurred,0.35);
+      vec3 smear=original*0.5+(sceneAt(vec2(-2.0,0))+sceneAt(vec2(2.0,0)))*0.17+(sceneAt(vec2(-4.0,0))+sceneAt(vec2(4.0,0)))*0.08;
+      vec3 telecine=smear*(dot(picture,LUMA)/max(dot(smear,LUMA),1e-4));
+      telecine.r+=(sceneAt(vec2(0.9,0)).r-original.r)*0.5;
+      original=mix(original,max(telecine,vec3(0.0)),uStrength);
+    }
+    float light=dot(soft,LUMA);
+    float diffusion=mix(mix(0.14,0.32,uDream),0.04,uBroadcast)*uStrength;
     vec3 color=mix(original,soft,diffusion);
-    // Highlight diffusion and warm film halation remain local to bright edges.
+    // Highlight diffusion and warm film halation remain local to bright edges;
+    // the 1991 look lets the red bleed further around the lit velvet.
     vec3 glow=soft*smoothstep(0.075,0.48,light);
-    color+=glow*mix(0.19,0.43,uDream)*uStrength;
-    color+=max(soft-original,vec3(0.0))*vec3(1.0,0.27,0.11)*mix(0.14,0.28,uDream)*uStrength;
-    color=mix(color,filmTone(color,uDream),uStrength);
+    color+=glow*mix(mix(0.19,0.43,uDream),0.07,uBroadcast)*uStrength;
+    float redness=clamp((soft.r-max(soft.g,soft.b))/max(soft.r,1e-4),0.0,1.0);
+    color+=max(soft-original,vec3(0.0))*mix(vec3(1.0,0.27,0.11),vec3(1.0,0.16,0.07),uBroadcast)
+      *mix(mix(0.14,0.28,uDream),0.28*pow(redness,4.0),uBroadcast)*uStrength;
+    color=mix(color,filmTone(color,uDream,uBroadcast),uStrength);
+    color*=1.0+uFlicker;
     vec2 fromCenter=(vUv-0.5)*vec2(1.0,0.9);
-    color*=1.0-smoothstep(0.14,0.45,dot(fromCenter,fromCenter))*mix(0.18,0.25,uDream)*uStrength;
+    color*=1.0-smoothstep(0.14,0.45,dot(fromCenter,fromCenter))*mix(mix(0.18,0.25,uDream),0.28,uBroadcast)*uStrength;
     gl_FragColor=vec4(max(color,vec3(0.0)),1.0);
     #include <colorspace_fragment>
     // Grain is added after display encoding so it remains fine in the shadows.
-    // The picture never shakes or flickers as a whole.
-    vec2 grainPixel=floor(gl_FragCoord.xy/max(1.0,uPixelRatio*0.85));
-    float noise=grainHash(grainPixel+uGrainFrame*vec2(17.0,31.0))-0.5;
-    float displayLuma=dot(gl_FragColor.rgb,vec3(0.2126,0.7152,0.0722));
-    gl_FragColor.rgb+=noise*mix(0.022,0.016,uDream)*uStrength*(0.55+0.45*sin(clamp(displayLuma,0.0,1.0)*3.14159));
+    float displayLuma=dot(gl_FragColor.rgb,LUMA);
+    float body=sin(clamp(displayLuma,0.0,1.0)*3.14159);
+    if(uBroadcast>0.5){
+      // Clumped 35 mm grain on ~2 px cells with a little colour, 24 fps.
+      vec2 cell=gl_FragCoord.xy/(2.0*max(1.0,uPixelRatio*0.85))+uGrainFrame*vec2(37.0,17.0);
+      float grain=grainNoise(cell)*0.7+grainNoise(cell*2.1+19.0)*0.3-0.5;
+      vec2 tint=vec2(grainNoise(cell+71.0),grainNoise(cell+113.0))-0.5;
+      gl_FragColor.rgb+=(vec3(grain)*0.115+vec3(tint.x,-(tint.x+tint.y)*0.5,tint.y)*0.028)*uStrength*(0.45+0.55*body);
+    }else{
+      vec2 grainPixel=floor(gl_FragCoord.xy/max(1.0,uPixelRatio*0.85));
+      float noise=grainHash(grainPixel+uGrainFrame*vec2(17.0,31.0))-0.5;
+      gl_FragColor.rgb+=noise*mix(0.022,0.016,uDream)*uStrength*(0.55+0.45*body);
+    }
     gl_FragColor.rgb=clamp(gl_FragColor.rgb,0.0,1.0);
   }
 `;
 
 export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
-  let look='film',strength=.65,lastPath='screen-film';
+  let look='broadcast',strength=.65,lastPath='screen-broadcast';
   let sceneTarget,blurA,blurB,width=0,height=0,samples=0,targetType='';
   const size=new THREE.Vector2();
-  const xrStrength={value:0},xrDream={value:0};
+  const xrStrength={value:0},xrDream={value:0},xrCrush={value:0};
   const hooks=[],seen=new Set();
   // XR keeps both eyes on the native rendering path. Only authored room
   // materials receive the restrained tone, leaving comfort fades / HUD clear.
@@ -91,13 +124,14 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
         compile.call(this,shader,...args);
         shader.uniforms.uXRFilmStrength=xrStrength;
         shader.uniforms.uXRFilmDream=xrDream;
-        shader.fragmentShader='uniform float uXRFilmStrength; uniform float uXRFilmDream;\n'+gradeGLSL+shader.fragmentShader;
+        shader.uniforms.uXRFilmCrush=xrCrush;
+        shader.fragmentShader='uniform float uXRFilmStrength; uniform float uXRFilmDream; uniform float uXRFilmCrush;\n'+gradeGLSL+shader.fragmentShader;
         shader.fragmentShader=shader.fragmentShader.replace('#include <colorspace_fragment>',`
-          gl_FragColor.rgb=mix(gl_FragColor.rgb,filmTone(gl_FragColor.rgb,uXRFilmDream),uXRFilmStrength);
+          gl_FragColor.rgb=mix(gl_FragColor.rgb,filmTone(gl_FragColor.rgb,uXRFilmDream,uXRFilmCrush),uXRFilmStrength);
           #include <colorspace_fragment>
         `);
       };
-      material.customProgramCacheKey=()=>baseKey+'|xr-film-tone-v1';
+      material.customProgramCacheKey=()=>baseKey+'|xr-film-tone-v2';
       material.needsUpdate=true;
     }
   });
@@ -108,7 +142,8 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
   const blur=new THREE.ShaderMaterial({vertexShader,fragmentShader:blurFragment,
     uniforms:{tInput:{value:null},uDirection:{value:new THREE.Vector2()}},depthTest:false,depthWrite:false,toneMapped:false});
   const composite=new THREE.ShaderMaterial({vertexShader,fragmentShader:filmFragment,
-    uniforms:{tScene:{value:null},tSoft:{value:null},uStrength:{value:.65},uDream:{value:0},uGrainFrame:{value:0},uPixelRatio:{value:1}},
+    uniforms:{tScene:{value:null},tSoft:{value:null},uStrength:{value:.65},uDream:{value:0},uBroadcast:{value:0},uFlicker:{value:0},
+      uGrainFrame:{value:0},uPixelRatio:{value:1},uTexel:{value:new THREE.Vector2(1,1)}},
     depthTest:false,depthWrite:false,toneMapped:false});
   const triangle=new THREE.Mesh(geometry,blur);triangle.frustumCulled=false;
   const screen=new THREE.Scene();screen.add(triangle);
@@ -141,8 +176,8 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
 
   function render(scene,camera,time=0){
     const amount=look==='clean'?0:strength;
-    const dream=look==='dream'?1:0;
-    xrStrength.value=renderer.xr.isPresenting?amount*.78:0;xrDream.value=dream;
+    const dream=look==='dream'?1:0,broadcast=look==='broadcast'?1:0;
+    xrStrength.value=renderer.xr.isPresenting?amount*.78:0;xrDream.value=dream;xrCrush.value=broadcast;
     if(renderer.xr.isPresenting||amount===0){
       lastPath=renderer.xr.isPresenting?(amount?'xr-grade':'xr-clean'):'screen-clean';
       renderer.render(scene,camera);
@@ -156,7 +191,7 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
     renderer.xr.enabled=false;
     try{
       renderer.setRenderTarget(sceneTarget);renderer.render(scene,camera);
-      const ratio=renderer.getPixelRatio(),radius=(dream?5.0:3.2)*ratio;
+      const ratio=renderer.getPixelRatio(),radius=(dream?5.0:broadcast?4.2:3.2)*ratio;
       triangle.material=blur;
       blur.uniforms.tInput.value=sceneTarget.texture;blur.uniforms.uDirection.value.set(radius/width,0);
       renderer.setRenderTarget(blurA);renderer.render(screen,screenCamera);
@@ -164,7 +199,11 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
       renderer.setRenderTarget(blurB);renderer.render(screen,screenCamera);
       triangle.material=composite;
       composite.uniforms.uStrength.value=amount;composite.uniforms.uDream.value=dream;
-      composite.uniforms.uGrainFrame.value=reducedMotion?0:Math.floor(Math.max(0,time)*24)%10000;
+      composite.uniforms.uBroadcast.value=broadcast;composite.uniforms.uTexel.value.set(1/width,1/height);
+      // Grain and the 1991 exposure flicker step at 24 fps; frozen for reduced motion.
+      const frame=reducedMotion?0:Math.floor(Math.max(0,time)*24)%10000,seed=Math.sin(frame*12.9898+1.7)*43758.5453;
+      composite.uniforms.uGrainFrame.value=frame;
+      composite.uniforms.uFlicker.value=reducedMotion?0:(seed-Math.floor(seed)-.5)*.024*amount*broadcast;
       composite.uniforms.uPixelRatio.value=ratio;
       renderer.setRenderTarget(previousTarget);renderer.render(screen,screenCamera);
     }finally{
@@ -175,7 +214,7 @@ export function createFilmEffects(renderer,models,{reducedMotion=false}={}){
 
   return {
     render,
-    setLook(value){if(['clean','film','dream'].includes(value))look=value;return look;},
+    setLook(value){if(['clean','film','dream','broadcast'].includes(value))look=value;return look;},
     setStrength(value){if(Number.isFinite(value))strength=THREE.MathUtils.clamp(value,0,1);return strength;},
     inspect(){return {look,strength,path:lastPath,width,height,targetType,samples,extraDrawCalls:lastPath.startsWith('screen-')&&lastPath!=='screen-clean'?3:0};},
     dispose(){
