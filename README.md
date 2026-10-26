@@ -4,12 +4,18 @@ A walkable WebXR reconstruction of the Red Room from *Twin Peaks* (1990–91), f
 
 - **Velvet that feels you.** The curtains give way to your body and ripple where you brush them. Now and then someone walks behind them, pressing their shape into the cloth.
 - **Statues that watch.** Out of your sight for a few seconds, a statue turns to face you. Look back, and she is looking at you.
-- **The room speaks backwards.** Lines spoken in reverse, with English and Chinese subtitles, placed in 3D around you. Wear headphones.
+- **The room speaks backwards, the way the series did it.** Lines spoken in reverse, with English and Chinese subtitles, placed in 3D around you. Wear headphones. The voices come from the project's own pipeline (see below).
 - **Circuits.** Leave the waiting room by one doorway and come back by the other: the lights stutter and go out, and the room changes in the dark. A statue is gone, a red double chair waits in violet haze, the furniture stands a little differently.
 - **Film looks.** The default 1991 broadcast look is calibrated against stills of the original; `?look=film`, `?look=dream`, `?look=clean` and `?frame=4:3` change it.
 - **A frame-exact recorder.** `npm run capture` renders scripted shots at 24 fps with film motion blur, a hazy lens and sound rendered in step with the picture (see 录制视频 below).
 
 There is no interface: no menus, no buttons, only the room and its subtitles.
+
+### The backwards voices
+
+The series made its Red Room speech by "double reversal": the actors learned their lines phonetically backwards, and the film was then run in reverse, so the words came out in order but every syllable sounded wrong. This project rebuilds that method as a pipeline (`scripts/voice`). A Windows speech voice (Microsoft David or Zira) gives the phonemes of each word; they are reversed, glides and affricates included, and spoken as IPA, phrase by phrase; the recording is then reversed, so the words return in order and each syllable keeps its reversed attack and decay. A slightly slower, half-tone lower pass follows, with a reverse reverb swelling into each word, a short dark room, the band of early-90s television and a little tape saturation. Windows' offline recogniser then checks each clip against all the lines. Sixteen lines, eight of them quoted from the series, each with English and Chinese subtitles, configured in `scripts/voice/lines.json`.
+
+The pipeline is the project's own and under the MIT License. Only the clips it renders depend on Microsoft's voices; see `LICENSE-ASSETS.md`.
 
 ### Quick start
 
@@ -105,7 +111,7 @@ VR：在头显自带的浏览器（Quest、Pico、Wolvic）里，进入的那一
 - **音量**：人声在语音频段明显高于底噪，说话时底噪压低约 8 dB。
 - **配置文件**：台词、所属房间、声源位置和字幕写在 `scripts/voice/lines.json`，房间编号见 `dist/js/rooms.js`；播放时读取 `dist/assets/voices/manifest.json`。只改触发或中文字幕时，运行 `python scripts/voice/generate.py --manifest-only` 即可，不必重新合成。
 
-做法沿用原剧的“双重倒放”：原剧让演员按音标倒着念台词，再把胶片倒放。这里先由 Windows 语音取得每个词的音素，倒序后用 IPA 念出（滑音和塞擦音也反向），逗号处停顿，再把录音整体倒放。词序因此恢复正常，每个音节却带着倒放的起音和收尾。之后稍放慢、降低半音，加一点反向混响、短房间响应、早期电视的频带和磁带饱和，编码为 22 kHz 单声道 MP3，七句共约 250 KB。
+做法沿用原剧的“双重倒放”：原剧让演员按音标倒着念台词，再把胶片倒放。这里先由 Windows 语音取得每个词的音素，倒序后用 IPA 念出（滑音和塞擦音也反向），逗号处停顿，再把录音整体倒放。词序因此恢复正常，每个音节却带着倒放的起音和收尾。之后稍放慢、降低半音，加一点反向混响、短房间响应、早期电视的频带和磁带饱和，编码为 22 kHz 单声道 MP3，十六句共约 530 KB。这套管线（`scripts/voice`）是本项目自己写的，以 MIT 发布；只有它渲染出的音频依赖微软的语音。
 
 ```sh
 python scripts/voice/generate.py   # 在 red-room-xr/ 下运行，仅限 Windows
